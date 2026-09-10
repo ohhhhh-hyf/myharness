@@ -1,4 +1,4 @@
-
+config.yaml
 __pycache__/
 *.pyc
 .venv/
@@ -7,5 +7,6 @@ dist/
 build/
 .idea/
 .vscode/
+.xiaoyi/
 .claude/
 CLAUDE.md

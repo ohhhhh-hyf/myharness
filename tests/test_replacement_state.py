@@ -1,7 +1,3 @@
-# 来源：公众号@小林coding
-# 后端八股网站：xiaolincoding.com
-# Agent网站：xiaolinnote.com
-# 简历模版：jianli.xiaolinnote.com
 
 """ContentReplacementState 的测试 —— 方案 B（决策冻结，不做原地修改）。"""
 from __future__ import annotations
@@ -9,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from mewcode.context.manager import (
+from xiaoyi.context.manager import (
     AGGREGATE_CHAR_LIMIT,
     PERSISTED_TAG,
     REPLACEMENT_RECORDS_FILENAME,
@@ -22,7 +18,7 @@ from mewcode.context.manager import (
     load_replacement_records,
     reconstruct_replacement_state,
 )
-from mewcode.conversation import ConversationManager, Message, ToolResultBlock
+from xiaoyi.conversation import ConversationManager, Message, ToolResultBlock
 
 def _one_msg_conv(*results: ToolResultBlock) -> ConversationManager:
     conv = ConversationManager()

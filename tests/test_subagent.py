@@ -1,7 +1,3 @@
-# 来源：公众号@小林coding
-# 后端八股网站：xiaolincoding.com
-# Agent网站：xiaolinnote.com
-# 简历模版：jianli.xiaolinnote.com
 
 """SubAgent 系统的测试（第 12 章）。"""
 
@@ -15,24 +11,24 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mewcode.agents.parser import AgentDef, AgentParseError, parse_agent_file, parse_frontmatter
-from mewcode.agents.loader import AgentLoader
-from mewcode.agents.tool_filter import (
+from xiaoyi.agents.parser import AgentDef, AgentParseError, parse_agent_file, parse_frontmatter
+from xiaoyi.agents.loader import AgentLoader
+from xiaoyi.agents.tool_filter import (
     ALL_AGENT_DISALLOWED_TOOLS,
     ASYNC_AGENT_ALLOWED_TOOLS,
     resolve_agent_tools,
 )
-from mewcode.agents.fork import (
+from xiaoyi.agents.fork import (
     FORK_BOILERPLATE_TAG,
     ForkError,
     build_forked_messages,
 )
-from mewcode.agents.trace import TraceManager, TraceNode
-from mewcode.agents.task_manager import BackgroundTask, TaskManager
-from mewcode.agents.notification import format_task_notification, inject_task_notifications
-from mewcode.conversation import ConversationManager, Message, ToolResultBlock, ToolUseBlock
-from mewcode.tools import ToolRegistry
-from mewcode.tools.base import Tool, ToolResult
+from xiaoyi.agents.trace import TraceManager, TraceNode
+from xiaoyi.agents.task_manager import BackgroundTask, TaskManager
+from xiaoyi.agents.notification import format_task_notification, inject_task_notifications
+from xiaoyi.conversation import ConversationManager, Message, ToolResultBlock, ToolUseBlock
+from xiaoyi.tools import ToolRegistry
+from xiaoyi.tools.base import Tool, ToolResult
 
 # =====================================================================
 # 辅助函数
@@ -209,7 +205,7 @@ class TestAgentLoader:
         assert "Verification" in agents
 
     def test_project_overrides_builtin(self, tmp_path: Path):
-        agents_dir = tmp_path / ".mewcode" / "agents"
+        agents_dir = tmp_path / ".xiaoyi" / "agents"
         agents_dir.mkdir(parents=True)
         custom_md = make_agent_md(
             name="Explore",
@@ -245,7 +241,7 @@ class TestAgentLoader:
         assert "general-purpose" in names
 
     def test_hot_reload(self, tmp_path: Path):
-        agents_dir = tmp_path / ".mewcode" / "agents"
+        agents_dir = tmp_path / ".xiaoyi" / "agents"
         agents_dir.mkdir(parents=True)
         f = agents_dir / "custom.md"
         f.write_text(make_agent_md(name="custom", description="v1"))
@@ -258,7 +254,7 @@ class TestAgentLoader:
         assert loader.get("custom").when_to_use == "v2"
 
     def test_bad_file_skipped(self, tmp_path: Path):
-        agents_dir = tmp_path / ".mewcode" / "agents"
+        agents_dir = tmp_path / ".xiaoyi" / "agents"
         agents_dir.mkdir(parents=True)
         (agents_dir / "bad.md").write_text("no frontmatter")
         (agents_dir / "good.md").write_text(
@@ -665,7 +661,7 @@ class TestNotification:
 
 class TestConfig:
     def test_enable_fork_default(self, tmp_path: Path):
-        from mewcode.config import load_config
+        from xiaoyi.config import load_config
         cfg = tmp_path / "config.yaml"
         cfg.write_text(textwrap.dedent("""\
         providers:
@@ -679,7 +675,7 @@ class TestConfig:
         assert config.enable_verification_agent is False
 
     def test_enable_fork_true(self, tmp_path: Path):
-        from mewcode.config import load_config
+        from xiaoyi.config import load_config
         cfg = tmp_path / "config.yaml"
         cfg.write_text(textwrap.dedent("""\
         providers:
@@ -700,7 +696,7 @@ class TestConfig:
 
 class TestPermissionMode:
     def test_dont_ask_mode(self):
-        from mewcode.permissions.modes import PermissionMode, mode_decide
+        from xiaoyi.permissions.modes import PermissionMode, mode_decide
         assert PermissionMode.DONT_ASK.value == "dontAsk"
         assert mode_decide(PermissionMode.DONT_ASK, "read") == "allow"
         assert mode_decide(PermissionMode.DONT_ASK, "write") == "allow"
@@ -712,14 +708,14 @@ class TestPermissionMode:
 
 class TestAgentToolParams:
     def test_required_fields(self):
-        from mewcode.tools.agent_tool import AgentToolParams
+        from xiaoyi.tools.agent_tool import AgentToolParams
         params = AgentToolParams(prompt="do this", description="test")
         assert params.prompt == "do this"
         assert params.subagent_type is None
         assert params.run_in_background is False
 
     def test_optional_fields(self):
-        from mewcode.tools.agent_tool import AgentToolParams
+        from xiaoyi.tools.agent_tool import AgentToolParams
         params = AgentToolParams(
             prompt="do",
             description="test",
@@ -741,7 +737,7 @@ class TestAgentToolParams:
 
 class TestAgentExtensions:
     def test_agent_has_id(self):
-        from mewcode.agent import Agent
+        from xiaoyi.agent import Agent
         client = MagicMock()
         registry = ToolRegistry()
         agent = Agent(client=client, registry=registry, protocol="anthropic")
@@ -751,7 +747,7 @@ class TestAgentExtensions:
         assert agent.trace_id is None
 
     def test_agent_catalog(self):
-        from mewcode.agent import Agent
+        from xiaoyi.agent import Agent
         client = MagicMock()
         registry = ToolRegistry()
         agent = Agent(client=client, registry=registry, protocol="anthropic")

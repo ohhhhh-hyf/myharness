@@ -1,7 +1,3 @@
-# 来源：公众号@小林coding
-# 后端八股网站：xiaolincoding.com
-# Agent网站：xiaolinnote.com
-# 简历模版：jianli.xiaolinnote.com
 
 from __future__ import annotations
 
@@ -9,7 +5,7 @@ import time
 
 import pytest
 
-from mewcode.context.manager import (
+from xiaoyi.context.manager import (
     RECOVERY_FILE_LIMIT,
     RECOVERY_SKILLS_BUDGET,
     RECOVERY_TOKENS_PER_FILE,
