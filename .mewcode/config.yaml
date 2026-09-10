@@ -1,0 +1,94 @@
+# ============================================================
+# MewCode 配置文件（框架模板）
+# ============================================================
+# 加载顺序与覆盖关系（后面的层覆盖前面的同名项）：
+#   1. ~/.mewcode/config.yaml            （用户级）
+#   2. <项目>/.mewcode/config.yaml       （项目级，即本文件）
+#   3. <项目>/.mewcode/config.local.yaml （个人本地覆盖，如 API key）
+# 找不到任何配置文件时程序会报错退出。
+#
+# 环境变量插值：MCP server 的 env 值支持 ${VAR} 写法，会从环境变量展开。
+# providers[].api_key 不支持插值——留空即可，程序会自动回退到环境变量
+# （anthropic -> ANTHROPIC_API_KEY，openai/openai-compat -> OPENAI_API_KEY）。
+# ============================================================
+
+# ---------- 模型提供方（必填，至少一个）----------
+providers:
+  # DeepSeek V4 Flash（OpenAI 兼容协议 -> 走 Chat Completions 端点）
+  - name: deepseek
+    protocol: openai-compat
+    base_url: https://api.deepseek.com
+    model: deepseek-v4-flash
+    api_key: ""                     # TODO: 在这里填入你的 DeepSeek API key
+    thinking: false                 # 是否启用 thinking / 推理模式（bool）
+    context_window: 1000000         # DeepSeek V4 文档标注 1M 上下文；如不对可改回 0 自动解析
+    # max_output_tokens: 0          # 单次最大输出 token；0 = 使用内置默认
+
+  # 其他协议参考（需要时取消注释）：
+  # - name: anthropic               # Anthropic 官方（api_key 留空 -> ANTHROPIC_API_KEY）
+  #   protocol: anthropic
+  #   base_url: https://api.anthropic.com
+  #   model: claude-sonnet-4-5
+  #   api_key: ""
+  #   thinking: false
+  # - name: openai                  # OpenAI 官方（Responses API）
+  #   protocol: openai
+  #   base_url: https://api.openai.com/v1
+  #   model: gpt-4o
+  #   api_key: ""
+
+# ---------- 权限模式 ----------
+# 合法值：default | acceptEdits | plan | bypassPermissions | custom | dontAsk
+# 也可启动时用 --mode 覆盖此设置
+permission_mode: default
+
+# ---------- 子 Agent / 团队功能 ----------
+enable_fork: false                  # 是否启用 fork 子任务 agent
+enable_verification_agent: false    # 是否启用验证 agent
+teammate_mode: ""                   # 合法值："" | "in-process"
+enable_coordinator_mode: false      # 是否启用协调者模式
+
+# ---------- MCP 服务器（可选）----------
+# 每个 server 必须有 name，且只能二选一：command（stdio）或 url（HTTP）。
+# command + url 同时出现会被拒绝；headers / env 仅配合各自类型使用。
+# mcp_servers:
+#   - name: filesystem
+#     command: npx
+#     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+#     env:
+#       TOKEN: ${MY_TOKEN}          # 支持 ${ENV_VAR} 展开
+#   - name: remote-api
+#     url: https://example.com/mcp
+#     headers:
+#       Authorization: Bearer xxx
+
+# ---------- Hooks（可选）----------
+# 合法事件：session_start / session_end / turn_start / turn_end /
+#   pre_tool_use / post_tool_use / pre_send / post_receive /
+#   startup / shutdown / error / compact / permission_request /
+#   file_change / command_execute
+# action.type：command | prompt | http | agent
+# 约束：reject 仅用于 pre_tool_use；async 不能用于 pre_tool_use；
+#   if 条件支持 field == "value" / != / =~ 以及 && / ||（两者不可混用）。
+# hooks:
+#   - id: deny-rm
+#     event: pre_tool_use
+#     if: 'tool_name == "Bash" && tool_args.command =~ "rm -rf"'
+#     action:
+#       type: command
+#       command: echo "危险命令已拦截"
+#     reject: true
+#   - id: notify-session
+#     event: session_start
+#     async: true
+#     action:
+#       type: http
+#       url: https://example.com/webhook
+#       method: POST
+#       body: '{"msg": "session started"}'
+
+# ---------- Worktree 清理（可选，均为默认值）----------
+worktree:
+  symlink_directories: ["node_modules", ".venv", "vendor"]  # 硬链接为目录
+  stale_cleanup_interval: 3600    # 清理检查间隔（秒）
+  stale_cutoff_hours: 24          # 超过该时长的 worktree 视为过期
