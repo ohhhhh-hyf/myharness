@@ -90,6 +90,7 @@ class _IndexState:
     def reset(self) -> None:
         self.ready = False
         self.error: str | None = None
+        self.stale: str = ""          # 宽松模式下记录"索引与当前环境的差异"
         self.built_at: str | None = None
         self.embed_model: str | None = None
         self.files: list[dict] = []
@@ -229,7 +230,12 @@ def _save() -> None:
 
 
 def _load_cached() -> bool:
-    """缓存存在、版本 / 模型 / 切块参数 / 源文件指纹全对上才加载。"""
+    """加载本地索引缓存。
+
+    默认**宽松模式**：只有格式版本不符才拒绝；嵌入模型 / 切块参数 / 源文档指纹与当前
+    环境有差异时仅记录告警（`status()["stale"]`）并照常加载——索引随仓库上传后开箱即用。
+    设置 RAG_INDEX_STRICT=1 切到严格模式：任一差异即判定失效，要求重新入库。
+    """
     path = Path(rag_config.settings.index_path)
     try:
         with gzip.open(path, "rt", encoding="utf-8") as f:
@@ -238,14 +244,29 @@ def _load_cached() -> bool:
         return False
     if data.get("version") != _INDEX_VERSION:
         return False
+
+    stale_reasons: list[str] = []
     if data.get("embed_model") != rag_config.settings.embed_model:
-        return False
-    if data.get("chunk_size") != rag_config.settings.chunk_size:
-        return False
-    if data.get("chunk_overlap") != rag_config.settings.chunk_overlap:
-        return False
+        stale_reasons.append(
+            f"嵌入模型不同（索引 {data.get('embed_model')} ≠ 当前 {rag_config.settings.embed_model}）"
+        )
+    if (data.get("chunk_size") != rag_config.settings.chunk_size
+            or data.get("chunk_overlap") != rag_config.settings.chunk_overlap):
+        stale_reasons.append("切块参数不同")
     if data.get("docs") != _source_fingerprints():
-        return False
+        stale_reasons.append("源文档指纹不同（文档有改动，或换机器后文件时间戳变化）")
+
+    if stale_reasons:
+        if rag_config.settings.index_strict:
+            _state.reset()
+            _state.error = ("索引与当前环境不一致（" + "；".join(stale_reasons) + "）："
+                            "严格模式（RAG_INDEX_STRICT=1）下需重新入库 "
+                            "python xiaoyi/rag/build_index.py")
+            return False
+        _state.stale = "；".join(stale_reasons)
+        logger.warning("索引与当前环境存在差异，宽松模式继续加载：%s（如需精确请重新入库）",
+                       _state.stale)
+
     _state.ready = True
     _state.error = None
     _state.built_at = data["built_at"]
@@ -349,11 +370,12 @@ def load() -> bool:
         return True
     path = Path(rag_config.settings.index_path)
     if not path.exists():
-        _state.error = ("知识索引不存在，尚未入库：请先运行 python xiaoyi/rag/build_index.py "
-                        "（入库需要 .env 的 EMBED_API_KEY）")
+        _state.error = ("知识索引不存在：索引是本地产物、不入版本库，换机器/部署到服务器后"
+                        "需要在当前环境重新入库 python xiaoyi/rag/build_index.py"
+                        "（需 xiaoyi/rag/.env 的 EMBED_API_KEY）")
     else:
-        _state.error = ("索引缓存与源文档不一致（文档有改动或换过嵌入模型）："
-                        "请重新入库 python xiaoyi/rag/build_index.py")
+        _state.error = ("索引缓存与源文档不一致（文档有改动 / 换过嵌入模型 / 换机器后"
+                        "文件时间戳变化）：请重新入库 python xiaoyi/rag/build_index.py")
     return False
 
 
@@ -362,6 +384,7 @@ def status() -> dict:
     return {
         "ready": _state.ready,
         "error": _state.error,
+        "stale": _state.stale,
         "built_at": _state.built_at,
         "embed_model": _state.embed_model,
         "chunk_total": _state.count(),

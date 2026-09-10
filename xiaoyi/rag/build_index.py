@@ -27,6 +27,9 @@ async def main(force: bool) -> None:
         st = rag_store.status()
         print(f"OK 知识库已就绪（缓存命中，无需联网）：{st['chunk_total']} 块，"
               f"构建于 {st['built_at']} · 模型 {st['embed_model']}")
+        if st.get("stale"):
+            print(f"   注意：索引与当前环境存在差异（{st['stale']}）——"
+                  f"已按宽松模式加载；如需精确请 --force 重建")
         for f in st.get("files", []):
             print(f"   - {f['name']}: {f['chunks']} 块")
         return

@@ -127,3 +127,23 @@ harness 侧由 `.xiaoyi/config.yaml` 的 `enable_rag` 开关控制，开启后�
 
 - 每轮对话自动预取检索，命中证据以 system-reminder 注入（UI 提示命中条数）；
 - 注册 `KnowledgeSearch` 工具（category=read，默认权限模式无需确认）。
+
+## 部署到服务器 / 新机器
+
+索引（`.xiaoyi/rag_index.json.gz`）是**本地产物、不入版本库**，且带**源文档指纹**
+（每个 md 的 size + mtime）。因此换环境后**必须在目标机器重新入库一次**：
+
+```bash
+# 1) 准备密钥（.env 同样不入版本库）
+cp xiaoyi/rag/.env.example xiaoyi/rag/.env && vi xiaoyi/rag/.env   # 填 EMBED_API_KEY / RERANK_API_KEY
+
+# 2) 入库（需要联网调用嵌入模型；30 份文档约 5 批请求）
+python xiaoyi/rag/build_index.py
+
+# 3) 验证
+python xiaoyi/rag/query.py "小艺怎么开启语音唤醒" --k 2
+```
+
+**为什么不能直接拷索引过去**：即使把 `.xiaoyi/rag_index.json.gz` 拷到服务器，
+`git clone`/解压会重写源文档的 mtime，指纹对不上 → `load()` 会判定缓存失效并要求重建
+（提示"索引缓存与源文档不一致"）。所以"到新环境跑一次 `build_index.py`"是最省事的做法。

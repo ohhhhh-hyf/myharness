@@ -13,7 +13,7 @@ RAG_DIR = Path(__file__).resolve().parent          # xiaoyi/rag/
 PROJECT_ROOT = RAG_DIR.parent.parent               # 项目根
 DATA_DIR = RAG_DIR / "data"                        # 知识源（20 份 md）
 ENV_FILE = RAG_DIR / ".env"
-INDEX_PATH = PROJECT_ROOT / ".xiaoyi" / "rag_index.json.gz"
+INDEX_PATH = RAG_DIR / "index" / "rag_index.json.gz"   # 随仓库提交，部署即可用
 
 
 def _load_dotenv(path: Path) -> None:
@@ -131,7 +131,12 @@ class Settings:
 
     # ---- 路径 ----
     kb_dir: Path = DATA_DIR
-    index_path: Path = INDEX_PATH
+    index_path: Path = field(default_factory=lambda: Path(_env("RAG_INDEX_PATH", default=str(INDEX_PATH))))
+
+    # 索引校验严格模式：默认 False（宽松）——嵌入模型/切块参数/源文档指纹不一致时
+    # 只告警、仍然加载，方便"索引随仓库上传后开箱即用"；设为 true 则不一致即判定失效、
+    # 必须重新入库（适合对数据新鲜度要求严格的场景）。
+    index_strict: bool = field(default_factory=lambda: _env_bool("RAG_INDEX_STRICT", default=False))
 
 
 settings = Settings()
