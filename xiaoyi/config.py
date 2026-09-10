@@ -10,9 +10,6 @@ import yaml
 from .validator import (
     ConfigError,
     DEFAULT_CONTEXT_WINDOW,
-    VALID_PERMISSION_MODES,
-    VALID_PROTOCOLS,
-    VALID_TEAMMATE_MODES,
     lookup_model_context_window,
     validate_config_structure,
 )
@@ -135,6 +132,8 @@ class AppConfig:
     raw_hooks: list[dict] = field(default_factory=list)
     enable_fork: bool = False
     enable_verification_agent: bool = False
+    # 是否启用本地 RAG 知识库（预取注入 + KnowledgeSearch 工具）
+    enable_rag: bool = False
     worktree: WorktreeConfig = field(default_factory=WorktreeConfig)
     teammate_mode: str = ""
     enable_coordinator_mode: bool = False
@@ -189,6 +188,7 @@ def _load_single_file(path: Path) -> AppConfig:
         raw_hooks=validated["hooks"],
         enable_fork=validated["enable_fork"],
         enable_verification_agent=validated["enable_verification_agent"],
+        enable_rag=validated["enable_rag"],
         worktree=worktree_cfg,
         teammate_mode=validated["teammate_mode"],
         enable_coordinator_mode=validated["enable_coordinator_mode"],
@@ -215,6 +215,8 @@ def _merge_config(base: AppConfig, override: AppConfig) -> AppConfig:
         base.enable_fork = True
     if override.enable_verification_agent:
         base.enable_verification_agent = True
+    if override.enable_rag:
+        base.enable_rag = True
     if override.teammate_mode:
         base.teammate_mode = override.teammate_mode
     if override.enable_coordinator_mode:

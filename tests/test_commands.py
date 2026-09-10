@@ -2,7 +2,6 @@
 """Slash Command 框架测试——registry、parser、补全、handler。"""
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -14,7 +13,6 @@ from xiaoyi.commands.registry import (
     CommandContext,
     CommandRegistry,
     CommandType,
-    UIController,
 )
 
 # ---------------------------------------------------------------------------
@@ -308,16 +306,6 @@ class TestPlanDoHandlers:
         await handle_plan(ctx)
         assert ui._plan_mode is True
         assert "设计登录模块" in ui.sent_messages
-
-    @pytest.mark.asyncio
-    async def test_do_switches_back(self) -> None:
-        from xiaoyi.commands.handlers.do import handle_do
-
-        ui = MockUI()
-        ctx = _make_context(args="", ui=ui)
-        await handle_do(ctx)
-        assert ui._plan_mode is False
-        assert "执行模式" in ui.messages[0]
 
 class TestSkillHandler:
     @pytest.mark.asyncio

@@ -226,7 +226,7 @@ def validate_config_structure(raw: object) -> dict:
 
     返回的字典包含以下键：
         providers、permission_mode、mcp_servers、hooks、
-        enable_fork、enable_verification_agent、worktree、
+        enable_fork、enable_verification_agent、enable_rag、worktree、
         teammate_mode、enable_coordinator_mode
     """
     if not isinstance(raw, dict) or "providers" not in raw:
@@ -241,6 +241,7 @@ def validate_config_structure(raw: object) -> dict:
         "enable_verification_agent": validate_bool_field(
             raw.get("enable_verification_agent", False), "enable_verification_agent"
         ),
+        "enable_rag": validate_bool_field(raw.get("enable_rag", False), "enable_rag"),
         "worktree": validate_worktree(raw.get("worktree")),
         "teammate_mode": validate_teammate_mode(raw.get("teammate_mode", "")),
         "enable_coordinator_mode": validate_bool_field(

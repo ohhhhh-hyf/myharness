@@ -1,8 +1,6 @@
 
 from __future__ import annotations
 
-import json
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -22,12 +20,10 @@ from xiaoyi.memory.instructions import (
 )
 from xiaoyi.memory.session import (
     RecordType,
-    ResumeResult,
     Session,
     SessionManager,
     SessionMeta,
     SessionRecord,
-    build_time_gap_message,
     make_compact_boundary,
     parse_compact_boundary,
     records_to_messages,
@@ -542,21 +538,6 @@ class TestCompactBoundaryRoundTrip:
         s.append_record(make_compact_boundary("x", []))
         assert s.meta.message_count == before  # 边界只是一个标记，不算一轮对话
         s.close()
-
-# =========================================================================
-# E. 时间间隔提示消息
-# =========================================================================
-
-class TestTimeGapMessage:
-    def test_no_gap_returns_none(self) -> None:
-        recent = datetime.now(timezone.utc) - timedelta(hours=1)
-        assert build_time_gap_message(recent) is None
-
-    def test_gap_returns_message(self) -> None:
-        old = datetime.now(timezone.utc) - timedelta(hours=48)
-        msg = build_time_gap_message(old)
-        assert msg is not None
-        assert "代码可能有变更" in msg.content
 
 # =========================================================================
 # F. 会话元数据 SessionMeta

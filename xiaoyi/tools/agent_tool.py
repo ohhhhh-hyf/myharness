@@ -497,7 +497,6 @@ class AgentTool(Tool):
         params: AgentToolParams,
         definition: AgentDef,
     ) -> LLMClient:
-        from xiaoyi.agents.parser import AgentDef
 
         model_override = params.model or (
             definition.model if definition.model != "inherit" else None
@@ -521,7 +520,6 @@ class AgentTool(Tool):
         from xiaoyi.agents.parser import AgentDef
         from xiaoyi.agents.tool_filter import resolve_agent_tools
         from xiaoyi.agent import Agent as AgentClass
-        from xiaoyi.conversation import ConversationManager
         from xiaoyi.permissions import (
             DangerousCommandDetector,
             PathSandbox,

@@ -105,12 +105,12 @@ async def execute(file_path: str = "", **kwargs) -> str:
     sections = _extract_sections(content)
 
     lines = [
-        f"## Resume Analysis",
-        f"",
+        "## Resume Analysis",
+        "",
         f"**Name**: {name}",
         f"**Experience**: {years} years",
-        f"",
-        f"### Tech Stack",
+        "",
+        "### Tech Stack",
     ]
 
     if explicit_tech:

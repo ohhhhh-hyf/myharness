@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, AsyncIterator
+from typing import TYPE_CHECKING
 
 from xiaoyi.conversation import ConversationManager, Message
 from xiaoyi.skills.parser import SkillDef, substitute_arguments
 from xiaoyi.tools import ToolRegistry
 
 if TYPE_CHECKING:
-    from xiaoyi.agent import Agent, AgentEvent
+    from xiaoyi.agent import Agent
     from xiaoyi.client import LLMClient
 
 log = logging.getLogger(__name__)

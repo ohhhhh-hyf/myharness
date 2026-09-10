@@ -5,16 +5,17 @@ from __future__ import annotations
 
 import asyncio
 import textwrap
-import time
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import (
+    AsyncMock,
+    MagicMock,
+)
 
 import pytest
 
 from xiaoyi.agents.parser import AgentDef, AgentParseError, parse_agent_file, parse_frontmatter
 from xiaoyi.agents.loader import AgentLoader
 from xiaoyi.agents.tool_filter import (
-    ALL_AGENT_DISALLOWED_TOOLS,
     ASYNC_AGENT_ALLOWED_TOOLS,
     resolve_agent_tools,
 )
@@ -23,10 +24,13 @@ from xiaoyi.agents.fork import (
     ForkError,
     build_forked_messages,
 )
-from xiaoyi.agents.trace import TraceManager, TraceNode
+from xiaoyi.agents.trace import TraceManager
 from xiaoyi.agents.task_manager import BackgroundTask, TaskManager
 from xiaoyi.agents.notification import format_task_notification, inject_task_notifications
-from xiaoyi.conversation import ConversationManager, Message, ToolResultBlock, ToolUseBlock
+from xiaoyi.conversation import (
+    ConversationManager,
+    ToolUseBlock,
+)
 from xiaoyi.tools import ToolRegistry
 from xiaoyi.tools.base import Tool, ToolResult
 

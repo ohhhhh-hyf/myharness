@@ -2,7 +2,6 @@
 """五层权限系统的测试。"""
 from __future__ import annotations
 
-import asyncio
 import tempfile
 from pathlib import Path
 from typing import Any, AsyncIterator
@@ -25,7 +24,6 @@ from xiaoyi.agent import (
 from xiaoyi.client import LLMClient
 from xiaoyi.conversation import ConversationManager
 from xiaoyi.permissions import (
-    Decision,
     DangerousCommandDetector,
     PathSandbox,
     PermissionChecker,

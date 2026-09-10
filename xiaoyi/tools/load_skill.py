@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
@@ -8,7 +8,6 @@ from xiaoyi.tools.base import Tool, ToolResult
 
 if TYPE_CHECKING:
     from xiaoyi.agent import Agent
-    from xiaoyi.skills.directory import register_skill_tools
     from xiaoyi.skills.loader import SkillLoader
 
 

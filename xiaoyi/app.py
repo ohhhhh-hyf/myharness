@@ -21,7 +21,6 @@ from xiaoyi.agent import (
     HookEvent,
     LoopComplete,
     PermissionRequest,
-    PermissionResponse,
     RetryEvent,
     StreamText,
     ThinkingText,
@@ -46,7 +45,10 @@ from xiaoyi.commands import (
 from xiaoyi.commands.completion import CompletionPopup
 from xiaoyi.commands.handlers import register_all_commands
 from xiaoyi.config import MCPServerConfig, ProviderConfig
-from xiaoyi.hooks import HookContext, HookEngine, load_hooks
+from xiaoyi.hooks import (
+    HookContext,
+    HookEngine,
+)
 from xiaoyi.conversation import Attachment, ConversationManager, Message
 from xiaoyi.mcp import MCPManager
 from xiaoyi.media import image_media_type
@@ -134,11 +136,17 @@ def expand_at_refs(text: str, work_dir: str) -> str:
     return _AT_REF_RE.sub(_replace, text)
 
 
-# 拖拽/粘贴产生的路径形态：裸路径、双引号或单引号包裹。
-_INPUT_TOKEN_RE = re.compile(r'"([^"]+)"|\'([^\']+)\'|(\S+)')
+# 拖拽/粘贴产生的路径形态：双引号或单引号包裹（路径可含空格）。
+_INPUT_TOKEN_RE = re.compile(r'"([^"]+)"|\'([^\']+)\'')
+
+# 图片扩展名（后随非 ASCII 字母数字时也视为结束，覆盖中英文粘连）。
+_IMAGE_EXT_RE = re.compile(r"\.(?:png|jpe?g|gif|webp)(?![A-Za-z0-9_])", re.IGNORECASE)
 
 # 路径尾部常见的包裹标点（中文标点与引号），提取时先剥离。
 _TOKEN_TRIM_CHARS = "，。；：、！？,.;:!?)]}>\"'"
+
+# 路径左侧的边界字符：空白或引号之外都可能是"粘连的正文"。
+_SPAN_BOUNDARY_CHARS = " \t\r\n\"'"
 
 
 def _normalize_path_token(token: str) -> str:
@@ -159,28 +167,80 @@ def extract_image_attachments(text: str, work_dir: str) -> tuple[str, list[Attac
     路径文本。这里识别其中指向本地图片的路径（裸路径、"..." 包裹、file:// 前缀），
     校验文件确实存在后转为附件，并从文本中移除该路径。
 
+    识别不依赖空白分词：拖拽插入的路径常与前后文字**直接粘连**
+    （如 ``D:\\a\\shot.png这个报错怎么看`` 或 ``看一下D:\\a\\shot.png``），
+    因此从图片扩展名向左逐步扩展、裁剪出真实存在的文件路径；多个路径彼此
+    粘连时（``a.pngb.png``）一轮只能切出最后一个，故循环扫描直到稳定。
+
     返回 (剩余文本, 附件列表)。未命中的内容原样保留。
     """
     attachments: list[Attachment] = []
+    remaining = text
+    for _ in range(16):
+        remaining, found = _extract_image_pass(remaining, work_dir)
+        attachments.extend(found)
+        if not found:
+            break
+    return remaining, attachments
+
+
+def _extract_image_pass(
+    text: str, work_dir: str
+) -> tuple[str, list[Attachment]]:
+    """单轮提取：引号包裹优先，其次从扩展名向左扩展出真实存在的路径。"""
+    attachments: list[Attachment] = []
     remove_spans: list[tuple[int, int]] = []
 
-    for m in _INPUT_TOKEN_RE.finditer(text):
-        token = m.group(1) or m.group(2) or m.group(3) or ""
-        if not token:
-            continue
-        candidate = _normalize_path_token(token)
+    def _try_attach(
+        start: int, end: int, span: tuple[int, int] | None = None
+    ) -> bool:
+        candidate = _normalize_path_token(text[start:end])
         if not candidate:
-            continue
+            return False
         media_type = image_media_type(candidate)
         if media_type is None:
-            continue
+            return False
         local = candidate if os.path.isabs(candidate) else os.path.join(work_dir, candidate)
         if not os.path.isfile(local):
+            return False
+        attachments.append(
+            Attachment(path=os.path.abspath(local), media_type=media_type)
+        )
+        remove_spans.append(span or (start, end))
+        return True
+
+    def _overlaps(start: int, end: int) -> bool:
+        return any(s < end and start < e for s, e in remove_spans)
+
+    # 1) 引号包裹的路径（可含空格）；连引号一起移除
+    for m in _INPUT_TOKEN_RE.finditer(text):
+        g = 1 if m.group(1) is not None else 2
+        _try_attach(m.start(g), m.end(g), span=(m.start(), m.end()))
+
+    # 2) 裸路径 / 与正文粘连的路径：从扩展名处向左扩展
+    for m in _IMAGE_EXT_RE.finditer(text):
+        end = m.end()
+        if _overlaps(m.start(), end):
             continue
-        attachments.append(Attachment(path=os.path.abspath(local), media_type=media_type))
-        start = m.start(1) if m.group(1) else m.start(2) if m.group(2) else m.start(3)
-        end = m.end(1) if m.group(1) else m.end(2) if m.group(2) else m.end(3)
-        remove_spans.append((start, end))
+        start = 0
+        for i in range(end - 1, -1, -1):
+            if text[i] in _SPAN_BOUNDARY_CHARS:
+                start = i + 1
+                break
+        # 从最长候选开始逐字符左裁剪，取第一个真实存在的文件
+        for s in range(start, end):
+            if _try_attach(s, end):
+                break
+
+    if not remove_spans:
+        return text, attachments
+
+    result = text
+    for start, end in sorted(remove_spans, reverse=True):
+        result = result[:start] + result[end:]
+    # 清理因移除路径产生的多余空白
+    result = re.sub(r"[ \t]{2,}", " ", result).strip()
+    return result, attachments
 
     if not remove_spans:
         return text, attachments
@@ -705,6 +765,7 @@ class XiaoYiApp(App):
         hook_engine: HookEngine | None = None,
         enable_fork: bool = False,
         enable_verification_agent: bool = False,
+        enable_rag: bool = False,
         worktree_config: Any = None,
         teammate_mode: str = "",
         enable_coordinator_mode: bool = False,
@@ -717,6 +778,8 @@ class XiaoYiApp(App):
         self.hook_engine = hook_engine
         self._enable_fork = enable_fork
         self._enable_verification_agent = enable_verification_agent
+        self._enable_rag = enable_rag
+        self._rag_warned = False
         self._worktree_config = worktree_config
         self._teammate_mode = teammate_mode
         self._enable_coordinator_mode = enable_coordinator_mode
@@ -873,6 +936,12 @@ class XiaoYiApp(App):
             ToolSearchTool(self.registry, protocol=provider.protocol)
         )
         self.registry.register(AskUserTool())
+
+        # 本地 RAG 知识库工具（config.yaml 的 enable_rag 开关控制）
+        if self._enable_rag:
+            from xiaoyi.tools.knowledge_search import KnowledgeSearchTool
+
+            self.registry.register(KnowledgeSearchTool())
 
         from xiaoyi.tools.exit_plan_mode import ExitPlanModeTool
         self._exit_plan_tool = ExitPlanModeTool()
@@ -1328,7 +1397,6 @@ class XiaoYiApp(App):
                 block._render_expanded()
 
         for summary in self.query(ToolGroupSummary):
-            was_expanded = summary._expanded
             summary.toggle()
             parent = summary.parent
             if parent:
@@ -1403,6 +1471,86 @@ class XiaoYiApp(App):
         except (asyncio.TimeoutError, Exception):
             return ""
 
+    def _rag_window_hit(self) -> bool:
+        """会话窗口承接：最近几轮用户消息里出现过域内关键词。
+
+        覆盖「那它呢」「那个功能在哪里设置」这类承接式追问——
+        它们本身不含关键词，但话题仍在知识库域内。
+        """
+        try:
+            from xiaoyi.rag import api as rag_api
+        except Exception:
+            return False
+        seen = 0
+        for msg in reversed(self.conversation.history):
+            if msg.role != "user":
+                continue
+            content = (msg.content or "").strip()
+            if not content or content.startswith("<system-reminder>"):
+                continue
+            seen += 1
+            if rag_api.keyword_hit(content):
+                return True
+            if seen >= 4:
+                break
+        return False
+
+    async def _prefetch_rag_knowledge(self, query: str) -> tuple[str, str]:
+        """检索本地知识库（xiaoyi/rag，按需懒加载）——三层门控后再生效。
+
+        ① 关键词/实体门控（零成本）：命中域内词，或最近几轮话题仍在域内；
+        ② 相似度门控：一次嵌入 + 本地点积，低于阈值判定为无关，不再调重排；
+        ③ 重排分数阈值（rag_search 内部）。
+
+        返回 (system-reminder 文本, UI 提示文本)：无关对话直接返回 ("", "")，
+        零 API 调用、零阻塞；未入库 / 上游异常只提示一次；低分静默。
+        任何情况都不抛异常。
+        """
+        try:
+            from xiaoyi.rag import api as rag_api
+        except Exception as e:
+            if not self._rag_warned:
+                self._rag_warned = True
+                return "", f"知识库不可用（{type(e).__name__}: {e}）"
+            return "", ""
+
+        try:
+            # ① 关键词/实体门控（含会话窗口承接）
+            if not rag_api.keyword_hit(query) and not self._rag_window_hit():
+                return "", ""
+
+            # ② 相似度门控；顺带拿到查询向量供检索复用（省一次嵌入调用）
+            sim, query_vec = await asyncio.wait_for(
+                rag_api.embed_and_max_similarity(query), timeout=8.0
+            )
+            if sim < 0:
+                return "", ""          # 索引未就绪 / 上游失败：静默
+            if sim < rag_api.gate_min_similarity():
+                return "", ""          # 判定为与知识库无关：不付重排成本
+
+            # ③ 检索（复用向量）+ 重排分数阈值过滤
+            result = await rag_api.rag_search(query, query_vec=query_vec)
+        except (asyncio.TimeoutError, Exception) as e:
+            if not self._rag_warned:
+                self._rag_warned = True
+                return "", f"知识库检索异常（{type(e).__name__}: {e}）"
+            return "", ""
+
+        if result.status == rag_api.RAG_OK:
+            hint = (
+                f"知识库命中 {len(result.hits)} 条证据"
+                f"（最高相关度 {result.top_score:.2f}）"
+            )
+            return rag_api.format_evidence(result.hits), hint
+
+        if result.status in (rag_api.RAG_NOT_READY, rag_api.RAG_ERROR):
+            if not self._rag_warned:
+                self._rag_warned = True
+                return "", f"知识库不可用：{result.message}"
+            return "", ""
+
+        return "", ""   # no_evidence：静默
+
     async def _send_message(self, text: str, is_notification: bool = False) -> None:
         assert self.agent is not None
 
@@ -1421,6 +1569,11 @@ class XiaoYiApp(App):
         prefetch_task = asyncio.create_task(
             self._prefetch_relevant_memories(text)
         ) if text else None
+
+        # 本地知识库检索预取（enable_rag 开启时；与记忆召回并行）
+        rag_task = asyncio.create_task(
+            self._prefetch_rag_knowledge(text)
+        ) if (text and self._enable_rag) else None
 
         # 拖拽/粘贴图片得到的是路径文本；识别为附件后从正文中移除。
         attachments: list[Attachment] = []
@@ -1469,6 +1622,17 @@ class XiaoYiApp(App):
                 reminder = await asyncio.wait_for(prefetch_task, timeout=3.0)
                 if reminder:
                     self.conversation.add_system_reminder(reminder)
+            except (asyncio.TimeoutError, Exception):
+                pass
+
+        # 知识库证据：注入为 system-reminder（未命中/低分静默，失败仅提示一次）
+        if rag_task is not None:
+            try:
+                rag_reminder, rag_hint = await asyncio.wait_for(rag_task, timeout=3.0)
+                if rag_reminder:
+                    self.conversation.add_system_reminder(rag_reminder)
+                if rag_hint:
+                    self._show_system_message(rag_hint)
             except (asyncio.TimeoutError, Exception):
                 pass
 
@@ -2197,7 +2361,7 @@ class XiaoYiApp(App):
         else:
             try:
                 label = self.query_one("#mode-label", Static)
-                label.update(f"[bold #F06538]default[/bold #F06538] [dim]·[/dim] ")
+                label.update("[bold #F06538]default[/bold #F06538] [dim]·[/dim] ")
             except Exception:
                 pass
         try:

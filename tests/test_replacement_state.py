@@ -56,7 +56,6 @@ def test_apply_does_not_mutate_conv(tmp_path: Path) -> None:
     big = "x" * (SINGLE_RESULT_CHAR_LIMIT + 100)
     conv = _one_msg_conv(ToolResultBlock(tool_use_id="t1", content=big))
     orig_content = conv.history[0].tool_results[0].content
-    orig_history_id = id(conv.history)
     state = create_replacement_state()
 
     api_conv, _ = apply_tool_result_budget(conv, tmp_path, state)

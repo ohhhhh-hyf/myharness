@@ -2,19 +2,13 @@
 """MCP 客户端系统的测试（第 6 章）。"""
 from __future__ import annotations
 
-import asyncio
-import os
 import textwrap
-import tempfile
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import yaml
 
 from xiaoyi.config import (
-    AppConfig,
     ConfigError,
     MCPServerConfig,
     build_child_env,

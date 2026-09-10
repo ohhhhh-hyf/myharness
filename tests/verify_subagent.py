@@ -9,7 +9,6 @@ SubAgent 系统端到端验证脚本。
 from __future__ import annotations
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -18,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from xiaoyi.agents.loader import AgentLoader
 from xiaoyi.agents.tool_filter import (
-    ALL_AGENT_DISALLOWED_TOOLS,
     ASYNC_AGENT_ALLOWED_TOOLS,
     resolve_agent_tools,
 )
@@ -440,7 +438,7 @@ def verify_agent_fields():
 # ---------------------------------------------------------------------------
 def verify_agent_tool():
     print("\n== 10. AgentTool 参数与 schema ==")
-    from xiaoyi.tools.agent_tool import AgentTool, AgentToolParams
+    from xiaoyi.tools.agent_tool import AgentToolParams
 
     params = AgentToolParams(
         prompt="探索项目结构",
@@ -474,7 +472,6 @@ def verify_agent_tool():
 # 主流程
 # ===========================================================================
 async def main():
-    global passed, failed
 
     print("=" * 60)
     print("  SubAgent 系统验证（第 12 章）")

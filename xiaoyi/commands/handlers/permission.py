@@ -57,7 +57,7 @@ async def handle_permission(ctx: CommandContext) -> None:
         if not rule_str:
             ctx.ui.add_system_message("用法: /permission add <规则> <效果>")
             return
-        from xiaoyi.permissions.rules import Rule, parse_rule
+        from xiaoyi.permissions.rules import parse_rule
         rule_parts = rule_str.rsplit(None, 1)
         if len(rule_parts) < 2 or rule_parts[1] not in ("allow", "deny"):
             ctx.ui.add_system_message(

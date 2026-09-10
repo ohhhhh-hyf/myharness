@@ -69,6 +69,7 @@ def main() -> None:
         hook_engine=hook_engine,
         enable_fork=config.enable_fork,
         enable_verification_agent=config.enable_verification_agent,
+        enable_rag=config.enable_rag,
         worktree_config=config.worktree,
         teammate_mode=config.teammate_mode,
         enable_coordinator_mode=config.enable_coordinator_mode,
@@ -95,7 +96,6 @@ async def _run_prompt(config, permission_mode, hook_engine, prompt: str) -> None
     from xiaoyi.tools.agent_tool import AgentTool
     from xiaoyi.tools.impl.tool_search import ToolSearchTool
     from xiaoyi.teams.manager import TeamManager
-    from xiaoyi.teams.models import BackendType
     from xiaoyi.tools.team_create import TeamCreateTool
     from xiaoyi.tools.team_delete import TeamDeleteTool
     from xiaoyi.worktree import WorktreeManager
@@ -123,6 +123,10 @@ async def _run_prompt(config, permission_mode, hook_engine, prompt: str) -> None
     instructions = load_instructions(work_dir)
     registry = create_default_registry()
     registry.register(ToolSearchTool(registry, protocol=provider.protocol))
+    if config.enable_rag:
+        from xiaoyi.tools.knowledge_search import KnowledgeSearchTool
+
+        registry.register(KnowledgeSearchTool())
 
     agent = Agent(
         client=client,
@@ -183,6 +187,17 @@ async def _run_prompt(config, permission_mode, hook_engine, prompt: str) -> None
     agent.notification_fn = drain_mailbox_only
 
     conv = ConversationManager()
+    if config.enable_rag:
+        try:
+            from xiaoyi.rag import api as rag_api
+
+            rag = await rag_api.rag_search(prompt)
+            if rag.status == rag_api.RAG_OK:
+                conv.add_system_reminder(rag_api.format_evidence(rag.hits))
+            elif rag.status in (rag_api.RAG_NOT_READY, rag_api.RAG_ERROR):
+                print(f"[rag] {rag.message}", file=sys.stderr, flush=True)
+        except Exception as e:
+            print(f"[rag] 检索异常: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
     last_result = await agent.run_to_completion(prompt, conv)
     print(last_result, flush=True)
 

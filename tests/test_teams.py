@@ -3,14 +3,14 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 import os
 import shutil
 import tempfile
-import time
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import (
+    MagicMock,
+    patch,
+)
 
 import pytest
 
@@ -18,11 +18,13 @@ from xiaoyi.teams.models import (
     AgentTeam,
     BackendType,
     TeammateInfo,
-    resolve_team_dir,
     unique_team_name,
 )
-from xiaoyi.teams.shared_task import SharedTask, SharedTaskStore
-from xiaoyi.teams.mailbox import Mailbox, MailboxMessage, create_message
+from xiaoyi.teams.shared_task import SharedTaskStore
+from xiaoyi.teams.mailbox import (
+    Mailbox,
+    create_message,
+)
 from xiaoyi.teams.registry import AgentNameRegistry
 from xiaoyi.teams.backend_detect import BackendDetectionError, detect_backend
 from xiaoyi.teams.coordinator import (
@@ -35,7 +37,6 @@ from xiaoyi.agents.tool_filter import (
     COORDINATOR_MODE_ALLOWED_TOOLS,
     IN_PROCESS_TEAMMATE_ALLOWED_TOOLS,
     TEAMMATE_COORDINATION_TOOLS,
-    build_teammate_tools,
     apply_coordinator_filter,
 )
 from xiaoyi.tools import ToolRegistry

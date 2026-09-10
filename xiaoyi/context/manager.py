@@ -787,7 +787,10 @@ async def auto_compact(
 
     for attempt in range(max_retries):
         try:
-            from xiaoyi.tools.base import StreamEnd, StreamEvent, TextDelta
+            from xiaoyi.tools.base import (
+                StreamEnd,
+                TextDelta,
+            )
 
             collected_text = ""
             async for event in client.stream(summary_conv, system=SUMMARY_PROMPT):

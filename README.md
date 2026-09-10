@@ -149,6 +149,7 @@ mcp_servers:
 | --- | --- | --- |
 | `enable_fork` | `false` | 允许子智能体继承当前对话上下文 |
 | `enable_verification_agent` | `false` | 启用内置 Verification 验证子智能体 |
+| `enable_rag` | `false` | 启用本地 RAG 知识库（检索证据自动注入 + KnowledgeSearch 工具） |
 | `teammate_mode` | `""` | 团队协作模式，可选 `in-process` |
 | `enable_coordinator_mode` | `false` | 启用协调者模式 |
 | `worktree` | 见下 | Git worktree 相关配置 |
@@ -182,6 +183,9 @@ worktree:
 **复制该图片后粘贴**（终端插入的是文件路径），提交时会自动识别为图片附件：
 
 - 支持格式：`png` / `jpg` / `jpeg` / `gif` / `webp`，单张上限 5MB，超出会降级为文字说明；
+- **路径与文字之间无需留空格**：拖拽或粘贴得到的路径可以紧贴前后文字
+  （`D:\a\shot.png这个报错怎么看`、`看一下D:\a\shot.png` 都能正确切分），
+  多个粘连的路径也会被逐一识别；
 - 路径会从消息正文中移除，聊天区以 `[图片] 文件名` 标记显示，并按协议转换为对应模型
   的图片块（Anthropic `image`、Responses API `input_image`、Chat Completions `image_url`）；
 - 图片默认随请求直接发送（模型需支持多模态）；仅在接入不支持图片输入的模型时，才需要
@@ -214,6 +218,39 @@ worktree:
 
 推荐使用 `/exit` 退出：正在生成的回复会被打断，随后依次执行记忆提炼、`shutdown` 钩子、
 MCP 连接关闭、会话落盘等清理动作。空闲状态下按 `Ctrl+C` 具有相同效果。
+
+## RAG 知识库（可选）
+
+`xiaoyi/rag/` 内置一套离线 RAG 检索模块（知识源为 `xiaoyi/rag/data/*.md`）：
+
+```bash
+python xiaoyi/rag/build_index.py            # 入库：切块 + bge-m3 嵌入 → .xiaoyi/rag_index.json.gz
+python xiaoyi/rag/query.py "小艺慧记有什么限制"   # 只测检索（含 RRF 与 bge 精排）
+```
+
+在 `.xiaoyi/config.yaml` 打开开关即接入对话：
+
+```yaml
+enable_rag: true     # 需要 xiaoyi/rag/.env 配置 EMBED_API_KEY / RERANK_API_KEY
+```
+
+开启后每轮对话会并行做两件事（失败静默，不阻塞）：
+
+1. **自动预取注入**：检索命中后把证据段落以 `system-reminder` 注入本轮上下文，
+   并在界面提示 "知识库命中 N 条证据"；
+2. **KnowledgeSearch 工具**：模型判断需要深入查证时可自行调用（不受门控限制，
+   是漏检时的兜底），返回带小节名与来源文件的证据段落。
+
+检索前经过**三层门控**，避免无关对话也付代价（实测：无关问题 0~18ms 直接跳过，
+域内问题约 1.6s 完成注入）：
+
+| 层 | 判据 | 成本 |
+| --- | --- | --- |
+| ① 关键词/实体（含最近几轮话题承接） | 命中域内词表（小艺/鸿蒙/慧记/唤醒词…） | 零（本地 <1ms） |
+| ② 相似度 | 查询与知识库的最大余弦 ≥ `RAG_GATE_MIN_SIMILARITY`（默认 0.55） | 一次嵌入（~0.12s）+ 本地点积 |
+| ③ 重排分数 | 最高分 ≥ `RERANK_MIN_SCORE`（默认 0.3） | 已有 |
+
+门控与检索**复用同一次嵌入**；词表与阈值都可在 `xiaoyi/rag/.env` 覆盖。
 
 ## 状态目录与项目指令
 

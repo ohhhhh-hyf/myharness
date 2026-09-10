@@ -16,7 +16,6 @@ from xiaoyi.context import (
     CompactBoundary,
     CompactCircuitBreaker,
     CompactEvent,
-    ContentReplacementRecord,
     ContentReplacementState,
     RecoveryState,
     append_replacement_records,
@@ -24,19 +23,18 @@ from xiaoyi.context import (
     auto_compact,
     create_replacement_state,
     ensure_session_dir,
-    load_replacement_records,
-    reconstruct_replacement_state,
 )
 from xiaoyi.conversation import ConversationManager, ToolResultBlock, ToolUseBlock
 from xiaoyi.conversation import ThinkingBlock as ConvThinkingBlock
 from xiaoyi.memory.auto_memory import MemoryManager
 from xiaoyi.permissions import (
-    Decision,
     PermissionChecker,
     PermissionMode,
 )
-from xiaoyi.hooks import HookContext, HookEngine, ToolRejectedError
-from xiaoyi.hooks.engine import HookNotification
+from xiaoyi.hooks import (
+    HookContext,
+    HookEngine,
+)
 from xiaoyi.prompts import build_environment_context, build_plan_mode_reminder, build_system_prompt
 from xiaoyi.tools import ToolRegistry
 from xiaoyi.tools.base import (

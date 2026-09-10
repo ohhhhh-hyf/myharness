@@ -2,12 +2,6 @@
 from __future__ import annotations
 
 import secrets
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from xiaoyi.worktree.manager import WorktreeManager
-
-
 WORKTREE_NOTICE_TEMPLATE = """\
 [WORKTREE CONTEXT]
 You have inherited the parent agent's conversation context.

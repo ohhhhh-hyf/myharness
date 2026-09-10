@@ -5,7 +5,11 @@ import logging
 from dataclasses import dataclass
 
 from xiaoyi.hooks.executors import execute_action
-from xiaoyi.hooks.models import ActionResult, Hook, HookContext, ToolRejectedError
+from xiaoyi.hooks.models import (
+    Hook,
+    HookContext,
+    ToolRejectedError,
+)
 
 log = logging.getLogger(__name__)
 

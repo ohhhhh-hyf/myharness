@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from xiaoyi.teams.backend_detect import BackendDetectionError, detect_backend
+from xiaoyi.teams.backend_detect import detect_backend
 from xiaoyi.teams.mailbox import Mailbox, create_message
 from xiaoyi.teams.models import (
     AgentTeam,
@@ -18,9 +17,6 @@ from xiaoyi.teams.progress import TeammateProgress
 from xiaoyi.teams.registry import AgentNameRegistry
 from xiaoyi.teams.shared_task import SharedTaskStore
 from xiaoyi.teams.spawn_inprocess import InProcessTeammateHandle
-
-if TYPE_CHECKING:
-    from xiaoyi.agent import Agent
 
 log = logging.getLogger(__name__)
 

@@ -3,11 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from xiaoyi.worktree.changes import has_unpushed_commits, has_worktree_changes
 from xiaoyi.worktree.manager import WorktreeManager

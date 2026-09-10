@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import textwrap
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -19,7 +19,6 @@ from xiaoyi.skills.parser import (
 from xiaoyi.skills.loader import SkillLoader
 from xiaoyi.skills.executor import (
     SkillDependencyError,
-    SkillExecutor,
     filter_tool_registry,
 )
 from xiaoyi.tools import ToolRegistry
@@ -514,7 +513,6 @@ class TestLoadSkillTool:
 
 class TestAgentSkillIntegration:
     def test_activate_and_clear(self) -> None:
-        from xiaoyi.agent import Agent
         from xiaoyi.prompts import build_environment_context
 
         env = build_environment_context(
