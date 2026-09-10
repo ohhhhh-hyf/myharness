@@ -1,4 +1,4 @@
-config.yaml
+
 __pycache__/
 *.pyc
 .venv/
@@ -9,10 +9,3 @@ build/
 .vscode/
 .claude/
 CLAUDE.md
-
-# xiaoyi 运行时状态目录（日志/会话/索引产物等）
-.xiaoyi/
-
-# RAG 本地密钥与索引产物
-xiaoyi/rag/.env
-xiaoyi/rag/kb_index.json.gz
