@@ -464,7 +464,7 @@ class TestRegisterAllCommands:
         cmds = registry.list_commands()
         names = {c.name for c in cmds}
         expected = {
-            "help", "compact", "clear", "plan", "do",
+            "help", "compact", "clear", "plan", "exit",
             "session", "mcp", "memory", "permission",
             "rewind", "status", "skill",
         }

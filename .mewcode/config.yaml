@@ -19,7 +19,7 @@ providers:
     protocol: openai-compat
     base_url: https://api.deepseek.com
     model: deepseek-v4-flash
-    api_key: ""                     # TODO: 在这里填入你的 DeepSeek API key
+    api_key: "sk-42dee5fd4425451da51fdcedb13b8589"                     # TODO: 在这里填入你的 DeepSeek API key
     thinking: false                 # 是否启用 thinking / 推理模式（bool）
     context_window: 1000000         # DeepSeek V4 文档标注 1M 上下文；如不对可改回 0 自动解析
     # max_output_tokens: 0          # 单次最大输出 token；0 = 使用内置默认
@@ -48,6 +48,11 @@ enable_verification_agent: false    # 是否启用验证 agent
 teammate_mode: ""                   # 合法值："" | "in-process"
 enable_coordinator_mode: false      # 是否启用协调者模式
 
+mcp_servers:
+  - name: filesystem
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "D:/study"]
+
 # ---------- MCP 服务器（可选）----------
 # 每个 server 必须有 name，且只能二选一：command（stdio）或 url（HTTP）。
 # command + url 同时出现会被拒绝；headers / env 仅配合各自类型使用。
@@ -55,6 +60,7 @@ enable_coordinator_mode: false      # 是否启用协调者模式
 #   - name: filesystem
 #     command: npx
 #     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
 #     env:
 #       TOKEN: ${MY_TOKEN}          # 支持 ${ENV_VAR} 展开
 #   - name: remote-api

@@ -108,7 +108,7 @@ class TestLoadConfigMCP:
                 base_url: http://localhost
                 model: gpt-4o
             mcp_servers:
-              github:
+              - name: github
                 command: npx
                 args: ["-y", "@modelcontextprotocol/server-github"]
                 env:
@@ -130,7 +130,7 @@ class TestLoadConfigMCP:
                 base_url: http://localhost
                 model: gpt-4o
             mcp_servers:
-              remote:
+              - name: remote
                 url: "https://api.example.com/mcp"
                 headers:
                   Authorization: "Bearer ${TOKEN}"
@@ -149,7 +149,7 @@ class TestLoadConfigMCP:
                 base_url: http://localhost
                 model: gpt-4o
             mcp_servers:
-              bad:
+              - name: bad
                 command: npx
                 url: "https://example.com"
         """)
@@ -164,7 +164,7 @@ class TestLoadConfigMCP:
                 base_url: http://localhost
                 model: gpt-4o
             mcp_servers:
-              bad:
+              - name: bad
                 env:
                   FOO: bar
         """)
@@ -196,7 +196,7 @@ class TestMCPToolWrapper:
         mock_client = MagicMock(spec=MCPClient)
         wrapper = MCPToolWrapper("github", tool_def, mock_client)
 
-        assert wrapper.name == "mcp_github_search_issues"
+        assert wrapper.name == "mcp__github__search_issues"
         assert wrapper.category == "command"
         assert wrapper.description == "Search GitHub issues"
 
@@ -218,7 +218,7 @@ class TestMCPToolWrapper:
         wrapper = MCPToolWrapper("srv", tool_def, mock_client)
 
         schema = wrapper.get_schema()
-        assert schema["name"] == "mcp_srv_search"
+        assert schema["name"] == "mcp__srv__search"
         assert schema["input_schema"] == input_schema
 
 # ===========================================================================
@@ -300,4 +300,4 @@ class TestMCPManagerPartialFailure:
 
         assert len(errors) == 1
         assert "bad" in errors[0]
-        assert registry.get("mcp_good_test_tool") is not None
+        assert registry.get("mcp__good__test_tool") is not None

@@ -324,6 +324,19 @@ class TestToolFilter:
         for name in names:
             assert name in ASYNC_AGENT_ALLOWED_TOOLS
 
+    def test_mcp_tools_always_allowed(self):
+        # 第 0 层约定：mcp__ 前缀的工具始终放行，不受后台白名单/禁用列表影响
+        reg = make_registry(
+            "ReadFile", "Bash", "mcp__filesystem__read_file", "mcp__fetch__fetch"
+        )
+        definition = AgentDef(
+            agent_type="test", when_to_use="test", source="builtin"
+        )
+        filtered = resolve_agent_tools(reg, definition, is_background=True)
+        names = {t.name for t in filtered.list_tools()}
+        assert "mcp__filesystem__read_file" in names
+        assert "mcp__fetch__fetch" in names
+
     def test_combined_whitelist_and_blacklist(self):
         reg = make_registry("ReadFile", "EditFile", "WriteFile", "Bash", "Grep")
         definition = AgentDef(

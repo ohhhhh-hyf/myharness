@@ -38,3 +38,43 @@ class NoAltScreenDriver(_BaseDriver):
             data = data.replace("\x1b[?1049l", "")
         if data:
             super().write(data)
+
+    def stop_application_mode(self) -> None:
+        """退出应用模式，并擦除本驱动留在屏幕上的最后一帧。
+
+        Textual 原生依赖"离开备用屏"（\\x1b[?1049l）把应用画面切走；本驱动
+        为了让内容留在 scrollback 里剥掉了这个序列，因此退出时输入框/状态栏
+        会残留在屏幕上，和 shell 提示符交错。这里在 Textual 完成收尾后，
+        主动擦除输入区所在行及其下方内容，只保留上方的对话历史。
+        """
+        super().stop_application_mode()
+        _erase_app_frame(self)
+
+
+def _erase_app_frame(driver) -> None:
+    """擦除应用占用的底部区域（输入框 + 状态栏）。
+
+    起点取输入区的实际位置（`#input-area` 的屏内行号 + 1，转成 1-based
+    终端行号）；取不到时退化为"从当前光标处清到屏幕末尾"。所有写入都在
+    try/except 中，退出路径绝不能因此抛出异常。
+    """
+    clear_from: int | None = None
+    try:
+        area = driver._app.screen.query_one("#input-area")
+        region = area.region
+        if area.display and region.height > 0:
+            clear_from = region.y + 1
+    except Exception:
+        clear_from = None
+
+    try:
+        if clear_from is None:
+            driver.write("\r")
+        else:
+            driver.write(f"\x1b[{clear_from};1H")
+        driver.write("\x1b[0m")     # 关闭残留样式
+        driver.write("\x1b[J")      # 清除光标以下所有内容（输入框/状态栏）
+        driver.write("\x1b[?25h")   # 确保光标可见
+        driver.flush()
+    except Exception:
+        pass

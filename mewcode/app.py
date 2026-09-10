@@ -162,6 +162,15 @@ class ChatInput(TextArea):
             super().__init__()
             self.text = text
 
+    class InterruptRequested(TMessage):
+        """请求 App 打断当前回复（ESC 兜底路径）。
+
+        不同 Textual 版本对"App 级 priority 绑定 vs 焦点控件 priority 绑定"
+        的裁决顺序不同：若输入框的 escape 绑定先被处理，App 的 cancel
+        绑定就收不到按键。这里在弹窗未打开时主动请求打断，保证 ESC
+        在任何版本下都能生效。
+        """
+
     def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("placeholder", "输入消息...(输入/唤起快捷指令)")
         super().__init__(**kwargs)
@@ -242,8 +251,11 @@ class ChatInput(TextArea):
 
     def action_dismiss_popup(self) -> None:
         popup = self._popup()
-        if popup is not None:
+        if popup is not None and popup.is_visible:
             popup.hide()
+            return
+        # 兜底：输入框先收到 ESC 且无弹窗可关时，请求打断当前回复
+        self.post_message(self.InterruptRequested())
 
     def action_nav_up(self) -> None:
         popup = self._popup()
@@ -1153,6 +1165,12 @@ class MewCodeApp(App):
             self._show_system_message("(response interrupted)")
         await self._dispatch_command(text)
 
+    def on_chat_input_interrupt_requested(
+        self, event: ChatInput.InterruptRequested
+    ) -> None:
+        """ESC 兜底路径：由输入框转发的打断请求，复用 App 的取消逻辑。"""
+        self.action_cancel()
+
     def on_chat_input_tab_complete(self, event: ChatInput.TabComplete) -> None:
         matches = complete(self.command_registry, event.text)
         if not matches:
@@ -1173,9 +1191,14 @@ class MewCodeApp(App):
         其余情况隐藏提示行。每次输入变化都会触发刷新，Tab 补全插入
         命令后（带空格）同样会命中"首词 = 命令"分支。
         """
-        hint = self.query_one("#command-hint", Static)
+        hint = None
         cmd = None
-        text = self.query_one("#chat-input", ChatInput).text
+        try:
+            hint = self.query_one("#command-hint", Static)
+            text = self.query_one("#chat-input", ChatInput).text
+        except Exception:
+            # 应用卸载中（输入框清理会触发文本变化事件）——忽略即可
+            return
         if text.startswith("/"):
             rest = text[1:]
             first = rest.split(None, 1)[0].lower() if rest else ""
@@ -1190,7 +1213,11 @@ class MewCodeApp(App):
 
     def on_chat_input_slash_menu_update(self, event: ChatInput.SlashMenuUpdate) -> None:
         self._sync_command_hint()
-        popup = self.query_one(CompletionPopup)
+        try:
+            popup = self.query_one(CompletionPopup)
+        except Exception:
+            # 应用卸载中——没有弹窗可操作
+            return
         if event.prefix is None:
             popup.hide()
             return
@@ -1383,7 +1410,7 @@ class MewCodeApp(App):
         self._thinking_verb = random.choice(THINKING_VERBS)
         self._spinner_idx = 0
         self._spinner_label = Static(
-            f"  {SPINNER_FRAMES[0]} {self._thinking_verb}…",
+            f"  {SPINNER_FRAMES[0]} {self._thinking_verb}…  · Esc 打断",
             id="spinner-live",
         )
         await chat.mount(self._spinner_label)
@@ -1721,6 +1748,33 @@ class MewCodeApp(App):
         if self._spinner_label is not None:
             self._spinner_label.remove()
             self._spinner_label = None
+        self._clear_pending_interactions()
+
+    def _clear_pending_interactions(self) -> None:
+        """清理未决的内联交互（权限确认 / 询问用户）。
+
+        ESC 打断时，等待中的 future 会随任务取消，但挂载在聊天区的
+        内联弹窗会残留，且输入框处于禁用状态。这里统一移除残留组件、
+        取消未决 future 并恢复输入框，避免出现可点击但已失效的弹窗。
+        """
+        for attr in ("_pending_perm_request", "_pending_askuser_event"):
+            req = getattr(self, attr, None)
+            if req is not None:
+                future = getattr(req, "future", None)
+                if future is not None and not future.done():
+                    future.cancel()
+            setattr(self, attr, None)
+        for selector in ("#perm-inline", "#askuser-inline"):
+            try:
+                self.query_one(selector).remove()
+            except Exception:
+                pass
+        try:
+            inp = self.query_one("#chat-input", ChatInput)
+            inp.disabled = False
+            inp.focus()
+        except Exception:
+            pass
 
     def _tick_spinner(self) -> None:
         """推进持久 spinner 标签上的动画帧。"""
@@ -1729,7 +1783,7 @@ class MewCodeApp(App):
         elapsed = _time.monotonic() - self._thinking_start
         if self._spinner_label is not None:
             self._spinner_label.update(
-                f"  {frame} {self._thinking_verb}…  ({elapsed:.0f}s)"
+                f"  {frame} {self._thinking_verb}…  ({elapsed:.0f}s)  · Esc 打断"
             )
             if self._spinner_idx % 5 == 0:
                 try:
@@ -1807,9 +1861,10 @@ class MewCodeApp(App):
         from mewcode.permission_dialog import InlinePermissionWidget
 
         req = getattr(self, "_pending_perm_request", None)
-        if req is not None:
+        if req is not None and not req.future.done():
             req.future.set_result(event.response)
-            self._pending_perm_request = None
+        # 无论 future 是否已被打断取消，都视为该请求已结束
+        self._pending_perm_request = None
         # 从聊天区移除权限弹窗组件
         try:
             widget = self.query_one("#perm-inline", InlinePermissionWidget)
@@ -1945,6 +2000,62 @@ class MewCodeApp(App):
     # 退出
     # -----------------------------------------------------------------
 
+    async def _graceful_shutdown(self) -> None:
+        """退出前的资源清理（Ctrl+C 与 /exit 共用）。"""
+        tasks: list[asyncio.Task] = []
+
+        if self.agent and self.agent.memory_manager:
+            tasks.append(asyncio.create_task(
+                self.agent._extract_memories(self.conversation)
+            ))
+        if self.hook_engine:
+            tasks.append(asyncio.create_task(
+                self.hook_engine.run_hooks(
+                    "shutdown", HookContext(event_name="shutdown")
+                )
+            ))
+        tasks.append(asyncio.create_task(self._shutdown_mcp()))
+
+        if tasks:
+            await asyncio.wait(tasks, timeout=3.0)
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+
+        if self._stale_cleanup_task and not self._stale_cleanup_task.done():
+            self._stale_cleanup_task.cancel()
+        if self._notification_check_task and not self._notification_check_task.done():
+            self._notification_check_task.cancel()
+
+        if hasattr(self, 'team_manager'):
+            for name in list(self.team_manager._teams):
+                try:
+                    team = self.team_manager._teams[name]
+                    for m in team.members:
+                        team.set_member_active(m.name, False)
+                    self.team_manager.delete_team(name)
+                except Exception:
+                    pass
+
+        if self.session:
+            self.session.close()
+
+    async def request_exit(self) -> None:
+        """优雅退出入口（/exit 与 Ctrl+C 共用）。
+
+        进行中的回复先打断，然后清理资源（记忆抽取、shutdown hooks、
+        MCP 连接、后台任务、团队、会话），最后退出应用。
+        """
+        if self._streaming:
+            if self._agent_task and not self._agent_task.done():
+                self._agent_task.cancel()
+            self._finish_streaming()
+        try:
+            await self._graceful_shutdown()
+        except Exception:
+            pass
+        self.exit()
+
     async def action_handle_ctrl_c(self) -> None:
         if self._streaming:
             if self._agent_task and not self._agent_task.done():
@@ -1959,62 +2070,25 @@ class MewCodeApp(App):
                 pass
             return
 
-        if getattr(self, "_exit_requested", False):
-            self.exit()
-            return
-        self._exit_requested = True
-
-        async def _cleanup() -> None:
-            tasks: list[asyncio.Task] = []
-
-            if self.agent and self.agent.memory_manager:
-                tasks.append(asyncio.create_task(
-                    self.agent._extract_memories(self.conversation)
-                ))
-            if self.hook_engine:
-                tasks.append(asyncio.create_task(
-                    self.hook_engine.run_hooks(
-                        "shutdown", HookContext(event_name="shutdown")
-                    )
-                ))
-            tasks.append(asyncio.create_task(self._shutdown_mcp()))
-
-            if tasks:
-                await asyncio.wait(tasks, timeout=3.0)
-                for t in tasks:
-                    if not t.done():
-                        t.cancel()
-
-            if self._stale_cleanup_task and not self._stale_cleanup_task.done():
-                self._stale_cleanup_task.cancel()
-
-            if hasattr(self, 'team_manager'):
-                for name in list(self.team_manager._teams):
-                    try:
-                        team = self.team_manager._teams[name]
-                        for m in team.members:
-                            team.set_member_active(m.name, False)
-                        self.team_manager.delete_team(name)
-                    except Exception:
-                        pass
-
-            if self.session:
-                self.session.close()
-
-        try:
-            await _cleanup()
-        except Exception:
-            pass
-        self.exit()
+        # 空闲时 Ctrl+C：与 /exit 相同的优雅退出
+        await self.request_exit()
 
     def _show_error(self, text: str) -> None:
-        chat = self.query_one("#chat-area", VerticalScroll)
+        try:
+            chat = self.query_one("#chat-area", VerticalScroll)
+        except Exception:
+            # 应用卸载中（例如退出时取消任务的收尾消息）——没有聊天区可写
+            return
         error_widget = Static(f"✖ {text}", classes="message error-message")
         chat.mount(error_widget)
         self.call_after_refresh(chat.scroll_end, animate=False)
 
     def _show_system_message(self, text: str) -> None:
-        chat = self.query_one("#chat-area", VerticalScroll)
+        try:
+            chat = self.query_one("#chat-area", VerticalScroll)
+        except Exception:
+            # 应用卸载中（例如退出时取消任务的收尾消息）——没有聊天区可写
+            return
         msg = Static(f"  {text}", classes="message system-message")
         chat.mount(msg)
         self.call_after_refresh(chat.scroll_end, animate=False)

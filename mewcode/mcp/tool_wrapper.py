@@ -68,7 +68,9 @@ class MCPToolWrapper(Tool):
         self._server_name = server_name
         self._tool_def = tool_def
         self._client = client
-        self.name = f"mcp_{server_name}_{tool_def.name}"
+        # 命名约定 mcp__<server>__<tool>：与 tool_filter、/mcp 状态显示和
+        # MCP 指令块里使用的双下划线前缀保持一致。
+        self.name = f"mcp__{server_name}__{tool_def.name}"
         self.description = tool_def.description or tool_def.name
         self.category = "command"
         self.is_concurrency_safe = False
