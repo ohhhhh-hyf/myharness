@@ -31,5 +31,7 @@
 ## 注意事项
 - .xiaoyi/ 是运行时状态目录（日志/会话/权限规则/含 API key 的配置），不要提交、不要当项目源码修改
 - MCP 工具命名约定：`mcp__<server>__<tool>`（双下划线）
-- Windows 上 MCP 子进程命令要写 `npx.cmd`，裸 `npx` 会报 WinError 2
+- Windows 上 MCP 子进程命令要写 `npx.cmd`，裸 `npx` 会报 WinError 2；文件系统 server 是
+  项目自带的 Python 实现（xiaoyi/mcp/servers/filesystem.py），用
+  `uv run --no-sync python -m xiaoyi.mcp.servers.filesystem .` 启动，不依赖 Node
 

@@ -92,11 +92,19 @@ def resolve_env_vars(value: str) -> str:
     return _ENV_VAR_RE.sub(lambda m: os.environ.get(m.group(1), m.group(0)), value)
 
 
+# MCP 子进程保留的宿主环境变量：仍是最小集（不泄露全部环境），但必须够 npx/node
+# 在 Windows 上完成包解析与缓存读写——只给 PATH 时 npm 会找不到 %APPDATA%/%TEMP%
+# 而静默挂死（实测：进程存活但连启动横幅都不打，initialize 永远无响应）。
+_KEEP_ENV_KEYS = (
+    "PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP",
+    "APPDATA", "LOCALAPPDATA", "USERPROFILE", "COMSPEC", "PATHEXT",
+)
+
+
 def build_child_env(declared_env: dict[str, str] | None) -> dict[str, str]:
-    env: dict[str, str] = {}
-    path = os.environ.get("PATH", "")
-    if path:
-        env["PATH"] = path
+    env: dict[str, str] = {
+        key: os.environ[key] for key in _KEEP_ENV_KEYS if os.environ.get(key)
+    }
     for key, value in (declared_env or {}).items():
         env[key] = resolve_env_vars(value)
     return env

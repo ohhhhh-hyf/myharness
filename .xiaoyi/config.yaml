@@ -19,7 +19,7 @@ providers:
     protocol: openai-compat
     base_url: https://api.deepseek.com
     model: deepseek-v4-flash-vision-exp
-    api_key: "sk-32c50dd96ddc494b8357681f975d009a"                     # TODO: 在这里填入你的 DeepSeek API key
+    api_key: "sk-0605cf514cfc474c879f5699c564e18b"                     # TODO: 在这里填入你的 DeepSeek API key
     thinking: false                 # 是否启用 thinking / 推理模式（bool）
     context_window: 1000000         # DeepSeek V4 文档标注 1M 上下文；如不对可改回 0 自动解析
     # max_output_tokens: 0          # 单次最大输出 token；0 = 使用内置默认
@@ -52,44 +52,25 @@ enable_coordinator_mode: false      # 是否启用协调者模式
 # ---------- MCP 服务器（可选）----------
 # 每个 server 必须有 name，且只能二选一：command（stdio）或 url（HTTP）。
 # command + url 同时出现会被拒绝；headers / env 仅配合各自类型使用。
-# mcp_servers:
-#   - name: filesystem
-#     command: npx
-#     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+mcp_servers:
+  # 文件系统 server：项目自带（xiaoyi/mcp/servers/filesystem.py），用 uv 拉起，不依赖 Node/npx。
+  # --no-sync 不能少：否则 uv 每次启动子进程都会检查并重装项目环境，harness 自身占着
+  # .venv 里的 xiaoyi.exe 时会重装失败。末尾的 "." 是允许访问的目录（= 启动 harness 的目录）。
+  - name: filesystem
+    command: uv
+    args: ["run", "--no-sync", "python", "-m", "xiaoyi.mcp.servers.filesystem", "."]
 
-#     env:
-#       TOKEN: ${MY_TOKEN}          # 支持 ${ENV_VAR} 展开
-#   - name: remote-api
-#     url: https://example.com/mcp
-#     headers:
-#       Authorization: Bearer xxx
-
-# ---------- Hooks（可选）----------
-# 合法事件：session_start / session_end / turn_start / turn_end /
-#   pre_tool_use / post_tool_use / pre_send / post_receive /
-#   startup / shutdown / error / compact / permission_request /
-#   file_change / command_execute
-# action.type：command | prompt | http | agent
-# 约束：reject 仅用于 pre_tool_use；async 不能用于 pre_tool_use；
-#   if 条件支持 field == "value" / != / =~ 以及 && / ||（两者不可混用）。
-# hooks:
-#   - id: deny-rm
-#     event: pre_tool_use
-#     if: 'tool_name == "Bash" && tool_args.command =~ "rm -rf"'
-#     action:
-#       type: command
-#       command: echo "危险命令已拦截"
-#     reject: true
-#   - id: notify-session
-#     event: session_start
-#     async: true
-#     action:
-#       type: http
-#       url: https://example.com/webhook
-#       method: POST
-#       body: '{"msg": "session started"}'
-
-# ---------- Worktree 清理（可选，均为默认值）----------
+  # 浏览器操作 server（Playwright 官方）：--executable-path 指向本机已装的 Chrome，
+  # 免去下载 Chromium；默认有头模式（能看到操作过程），服务器上再加 --headless
+  - name: playwright
+    command: npx.cmd
+    args:
+      - "-y"
+      - "@playwright/mcp@latest"
+      - "--executable-path"
+      - "C:/Program Files/Google/Chrome/Application/chrome.exe"
+      # - "--headless"          # 无头模式：不弹窗口（服务器/CI 用）
+      # - "--isolated"          # 每次全新临时配置，避免"浏览器已被占用"的残留锁问题
 worktree:
   symlink_directories: ["node_modules", ".venv", "vendor"]  # 硬链接为目录
   stale_cleanup_interval: 3600    # 清理检查间隔（秒）
