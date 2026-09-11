@@ -19,7 +19,7 @@ providers:
     protocol: openai-compat
     base_url: https://api.deepseek.com
     model: deepseek-v4-flash-vision-exp
-    api_key: "sk-32c50dd96ddc494b8357681f975d009a"                     # TODO: 在这里填入你的 DeepSeek API key
+    api_key: "sk-0605cf514cfc474c879f5699c564e18b"                     # TODO: 在这里填入你的 DeepSeek API key
     thinking: false                 # 是否启用 thinking / 推理模式（bool）
     context_window: 1000000         # DeepSeek V4 文档标注 1M 上下文；如不对可改回 0 自动解析
     # max_output_tokens: 0          # 单次最大输出 token；0 = 使用内置默认
@@ -52,10 +52,72 @@ enable_coordinator_mode: false      # 是否启用协调者模式
 # ---------- MCP 服务器（可选）----------
 # 每个 server 必须有 name，且只能二选一：command（stdio）或 url（HTTP）。
 # command + url 同时出现会被拒绝；headers / env 仅配合各自类型使用。
-# mcp_servers:
-#   - name: filesystem
-#     command: npx
-#     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+#
+# 全部改用 uvx（Python 生态）启动，不依赖 Node/npx。
+# uvx 首次运行会把依赖装进自己的缓存环境（~/.local/share/uv 或 %LOCALAPPDATA%\uv），
+# 与项目 .venv 完全隔离；若 uvx 解析不到，可换成绝对路径，如
+# C:/Users/<用户名>/.local/bin/uvx.exe
+mcp_servers:
+   # ---- 文件系统 ----
+   # 原 npx 版本（@modelcontextprotocol/server-filesystem）为 Node 包，改用 Python 等价物。
+   # --lock-root 限定可访问目录（原配置末尾的 "." 即此作用），留空则不限。
+   # 注意：这些工具不走 XiaoYi 的权限矩阵与路径沙箱，写操作在 root 内直接生效。
+   - name: filesystem
+     command: uvx
+     args: ["fsext-mcp-server", "--lock-root", "."]
+
+   # ---- 网页抓取 ----
+   # Anthropic 官方 Python 参考实现（modelcontextprotocol/servers 的 src/fetch）。
+   # 提供 1 个工具：fetch —— 抓取 URL 并转成 Markdown，弥补内置工具无联网能力。
+   - name: fetch
+     command: uvx
+     args: ["mcp-server-fetch"]
+
+   # ---- 浏览器自动化 ----
+   # 必须带 --with "mcp<2"：该包未适配 MCP Python SDK v2，不锁版本会在导入时直接崩溃。
+   # （锁定只作用于 uvx 的隔离环境，不影响 XiaoYi 自己用的 mcp 版本。）
+   # 提供 8 个工具：navigate / click / click_text / fill / screenshot / evaluate /
+   # get_html_content / get_text_content。
+   # 需要 Playwright 浏览器二进制；缺失时执行：
+   #   uvx --from playwright playwright install chromium
+   - name: playwright
+     command: uvx
+     args: ["--with", "mcp<2", "playwright-server"]
+
+   # ---- 网页搜索 ----
+   # DuckDuckGo 搜索，无需 API key，内置限速（search 30/分、fetch 20/分）。
+   - name: search
+     command: uvx
+     args: ["duckduckgo-mcp-server"]
+
+   # ---- PDF 处理 ----
+   # 7 个工具：合并、拆分、加（文字/图片）水印、加密、转图片。
+   - name: pdf
+     command: uvx
+     args: ["pdf-mcp-server"]
+
+   # ---- Excel 表格 ----
+   # 25 个工具：读写单元格、公式、图表、透视表、多工作表管理。
+   # 注意必须带 stdio 子命令，直接 uvx excel-mcp-server 会报 Missing command。
+   - name: excel
+     command: uvx
+     args: ["excel-mcp-server", "stdio"]
+
+   # ---- 其他可选（取消注释即启用，均需 --with "mcp<2"）----
+   # git 服务（13 个工具，功能与 Bash 调用 git 重叠度较高，故默认关闭）
+   # - name: git
+   #   command: uvx
+   #   args: ["--with", "mcp<2", "mcp-server-git", "--repository", "."]
+   #
+   # 时间/时区服务
+   # - name: time
+   #   command: uvx
+   #   args: ["--with", "mcp<2", "mcp-server-time", "--local-timezone", "Asia/Shanghai"]
+   #
+   # SQLite 查询服务（db 路径需已存在）
+   # - name: sqlite
+   #   command: uvx
+   #   args: ["--with", "mcp<2", "mcp-server-sqlite", "--db-path", "data.db"]
 
 #     env:
 #       TOKEN: ${MY_TOKEN}          # 支持 ${ENV_VAR} 展开
