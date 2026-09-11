@@ -10,3 +10,6 @@ build/
 .claude/
 CLAUDE.md
 
+
+# 运行时状态：日志、会话、记忆与含密钥的本地配置
+.xiaoyi/
