@@ -78,7 +78,7 @@ async def rerank(query: str, docs: list[str], top_n: int | None = None) -> list[
     }
     resp = await _post(
         _rerank_url(), payload,
-        {"Authorization": f"Bearer {rag_config.settings.rerank_api_key}"}, 60,
+        {"Authorization": f"Bearer {rag_config.settings.rerank_api_key}"}, 15,
     )
     resp.raise_for_status()
     results = resp.json()["results"]

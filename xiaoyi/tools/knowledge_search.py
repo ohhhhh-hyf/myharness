@@ -43,7 +43,7 @@ class KnowledgeSearchTool(Tool):
         result = await rag_api.rag_search(params.query, k=params.k)
 
         if result.status == rag_api.RAG_OK:
-            return ToolResult(output=rag_api.format_evidence(result.hits))
+            return ToolResult(output=rag_api.format_evidence(result.hits, note=result.note))
         if result.status == rag_api.RAG_NOT_READY:
             return ToolResult(output=f"知识库未就绪：{result.message}{_NOT_READY_HINT}")
         if result.status == rag_api.RAG_NO_EVIDENCE:

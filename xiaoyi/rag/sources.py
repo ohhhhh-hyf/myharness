@@ -8,8 +8,10 @@
 """
 from __future__ import annotations
 
+import functools
 import re
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -69,3 +71,71 @@ def list_sources() -> list[Source]:
 
 def read_markdown(src: Source) -> str:
     return strip_frontmatter(src.path.read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------- 门控关键词（自动生成）
+# 知识库的"话题清单"其实就写在文档标题里：把每个 md 的 H1/H2 小节标题与文件名标题
+# 切成短词，按**文档频率**过滤掉过于通用的词（如"常见问题""使用"），得到域内关键词表。
+# 好处：新增文档后词表自动覆盖，零维护；显式设置 RAG_GATE_KEYWORDS 时以显式值为准。
+
+_TERM_SPLIT_RE = re.compile(r"[\s：:、，。！？；;·—–/\|()（）【】\[\]{}<>《》\"'“”‘’]+")
+_TERM_SPLIT_WORDS_RE = re.compile(r"[与和及的地得]+")
+_LEADING_INDEX_RE = re.compile(r"^(?:[一二三四五六七八九十百千]+[、.．)）]|\d+[、.．)）]|[（(]\d+[)）])+\s*")
+_TRAILING_PARTICLE_RE = re.compile(r"[上中里内等]+$")
+_TERM_OK_RE = re.compile(r"^[一-鿿A-Za-z0-9]{2,12}$")
+
+# 明确过于通用的词（即使文档频率不高也不做门控词）
+_GENERIC_TERMS = {
+    "常见问题", "使用", "支持", "介绍", "功能", "方式", "设置", "说明", "概览",
+    "限制", "场景", "能力", "方法", "步骤", "问题", "总结", "汇总", "对照表", "总表",
+    "边界", "原则", "要点", "建议", "实操", "详解", "指南", "手册", "速查", "教程", "排查",
+}
+_MAX_DF_RATIO = 0.35      # 出现在超过 35% 文档中的词视为通用词，剔除
+_JUNK_RE = re.compile(r"[+=\d]")   # 含数字/加号/等号的词（年份、"1+8+N" 等）不做门控词
+
+
+def _candidate_terms(text: str) -> list[str]:
+    """把一行标题切成候选词：先按标点/空格切，再按连接词（与和及）与"的"切。"""
+    out: list[str] = []
+    for chunk in _TERM_SPLIT_RE.split(text or ""):
+        chunk = _LEADING_INDEX_RE.sub("", chunk.strip())
+        for piece in _TERM_SPLIT_WORDS_RE.split(chunk):
+            piece = _TRAILING_PARTICLE_RE.sub("", piece.strip())
+            if not piece or piece in _GENERIC_TERMS:
+                continue
+            if _TERM_OK_RE.match(piece):
+                out.append(piece)
+    return out
+
+
+@functools.lru_cache(maxsize=1)
+def gate_keywords() -> tuple[str, ...]:
+    """域内关键词表：显式配置优先，否则由文档标题自动生成 + 内置基础词兜底。"""
+    from config import DEFAULT_GATE_KEYWORDS, settings  # 本文件夹自成一体：绝对名导入
+
+    explicit = settings.gate_keywords
+    if explicit and tuple(explicit) != tuple(DEFAULT_GATE_KEYWORDS):
+        return tuple(explicit)          # 用户显式配置 → 不自动生成
+
+    sources = list_sources()
+    df: Counter[str] = Counter()
+    for src in sources:
+        text = read_markdown(src)
+        titles = [src.title]
+        titles += [ln.lstrip("#").strip() for ln in text.splitlines() if ln.startswith("#")]
+        for term in set(_candidate_terms(" ".join(titles))):
+            df[term] += 1
+
+    n_docs = max(len(sources), 1)
+    auto = {
+        t for t, d in df.items()
+        if d <= max(2, int(n_docs * _MAX_DF_RATIO))
+        and not _JUNK_RE.search(t)
+        and not (t.isascii() and len(t) < 3)       # 纯英文过短（如 "vs"）不做门控词
+    }
+    return tuple(sorted(auto | set(DEFAULT_GATE_KEYWORDS)))
+
+
+def reset_gate_keywords_cache() -> None:
+    """测试用：清空自动词表缓存。"""
+    gate_keywords.cache_clear()

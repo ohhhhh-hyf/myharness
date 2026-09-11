@@ -23,7 +23,7 @@ import json
 
 import config as rag_config
 import localstore as rag_store
-from retrieval import search_knowledge
+import api as rag_api
 
 
 def _snippet(text: str, width: int = 80) -> str:
@@ -36,25 +36,38 @@ async def main(query: str, top_k: int, as_json: bool) -> None:
         print(f"知识库未就绪：{rag_store.status().get('error')}", file=sys.stderr)
         sys.exit(1)
 
-    hits = await search_knowledge(query, top_k=top_k)
+    result = await rag_api.rag_search(query, k=top_k)
+    hits = result.hits
 
     if as_json:
-        print(json.dumps(
-            {"query": query, "strategy": "hybrid_rerank", "hits": hits},
-            ensure_ascii=False, indent=2,
-        ))
+        print(json.dumps({
+            "query": query,
+            "status": result.status,
+            "message": result.message,
+            "route_category": result.route_category,
+            "route_source": result.route_source,
+            "note": result.note,
+            "hits": hits,
+        }, ensure_ascii=False, indent=2))
         return
 
     st = rag_store.status()
     print(f"问题: {query}")
+    normalized = rag_api.normalize_query(query)
+    if normalized != query:
+        print(f"归一化: {query} → {normalized}（同音错字纠正）")
     print(f"链路: 向量 + BM25 → RRF → bge 精排 | 索引 {st['chunk_total']} 块 | 模型 {st['embed_model']}")
+    print(f"状态: {result.status} | 路由: {result.route_category or '（无）'}"
+          f"{' · ' + result.route_source if result.route_source else ''}")
+    if result.note:
+        print(f"说明: {result.note}")
     print("-" * 72)
     if not hits:
         print("（无召回结果）")
         return
     for i, h in enumerate(hits, start=1):
         score = h.get("rerank_score", h.get("score"))
-        print(f"[{i}] rerank={score:.4f}  {h.get('section_path', '')}")
+        print(f"[{i}] rerank={score:.4f}  [{h.get('file_category', '')}] {h.get('section_path', '')}")
         print(f"    来源: {h.get('source_file', '')}  类别: {h.get('category', '')}")
         print(f"    问: {h.get('question', '')}")
         print(f"    答: {_snippet(h.get('answer', ''))}")

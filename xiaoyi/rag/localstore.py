@@ -175,6 +175,7 @@ class _IndexState:
             "question": row["questions"], "answer": row["answer"],
             "section_path": row["section_path"], "content_type": row["content_type"],
             "category": row["category"], "source_file": row.get("source_file", ""),
+            "file_category": row.get("file_category", ""),
         }
 
     def count(self) -> int:
@@ -368,14 +369,17 @@ def load() -> bool:
         return True
     if _load_cached():
         return True
+    if _state.error:
+        # _load_cached 已给出更具体的原因（如严格模式下的差异明细），保留它
+        return False
     path = Path(rag_config.settings.index_path)
     if not path.exists():
-        _state.error = ("知识索引不存在：索引是本地产物、不入版本库，换机器/部署到服务器后"
-                        "需要在当前环境重新入库 python xiaoyi/rag/build_index.py"
+        _state.error = ("知识索引不存在：索引随仓库提交（xiaoyi/rag/index/rag_index.json.gz）；"
+                        "若未随仓库获取，请在本机入库 python xiaoyi/rag/build_index.py"
                         "（需 xiaoyi/rag/.env 的 EMBED_API_KEY）")
     else:
-        _state.error = ("索引缓存与源文档不一致（文档有改动 / 换过嵌入模型 / 换机器后"
-                        "文件时间戳变化）：请重新入库 python xiaoyi/rag/build_index.py")
+        _state.error = ("索引无法读取或与当前环境不一致：请重新入库 "
+                        "python xiaoyi/rag/build_index.py")
     return False
 
 

@@ -73,6 +73,38 @@ DEFAULT_GATE_KEYWORDS: tuple[str, ...] = (
 )
 
 
+# 查询别名归一化表：常见同音错字 → 正确写法（默认针对"小艺"）。
+# 刻意只收**同位置的同音错字**（易/忆/义/依/翼/意/议/艺…），不含"小雨/小姨"这类
+# 真实词汇（"明天小雨""我小姨"）以免误伤；可用 RAG_ALIAS_MAP 覆盖或追加。
+DEFAULT_ALIAS_MAP: dict[str, str] = {
+    "小易": "小艺",
+    "小忆": "小艺",
+    "小义": "小艺",
+    "小依": "小艺",
+    "小翼": "小艺",
+    "小意": "小艺",
+    "小议": "小艺",
+    "小谊": "小艺",
+    "晓艺": "小艺",
+    "小艺": "小艺",
+}
+
+
+def _parse_alias_map(raw: str) -> dict[str, str]:
+    """解析 RAG_ALIAS_MAP（"错字=正确,错字=正确"）；留空用内置表。"""
+    if not raw.strip():
+        return dict(DEFAULT_ALIAS_MAP)
+    out: dict[str, str] = {}
+    for pair in raw.split(","):
+        if "=" not in pair:
+            continue
+        wrong, _, right = pair.partition("=")
+        wrong, right = wrong.strip(), right.strip()
+        if wrong and right:
+            out[wrong] = right
+    return out or dict(DEFAULT_ALIAS_MAP)
+
+
 def _parse_keywords(raw: str) -> tuple[str, ...]:
     if not raw.strip():
         return DEFAULT_GATE_KEYWORDS
@@ -120,6 +152,27 @@ class Settings:
         "RAG_GATE_MIN_SIMILARITY", default=0.55))
     gate_keywords: tuple[str, ...] = field(default_factory=lambda: _parse_keywords(
         _env("RAG_GATE_KEYWORDS")))
+
+    # ---- 查询别名归一化（同音错字纠正，门控/嵌入/检索前生效） ----
+    # 默认开启；只做"错字 → 正确名"的确定性替换，不引入拼音依赖、不改写用户消息本身
+    alias_normalize: bool = field(default_factory=lambda: _env_bool(
+        "RAG_ALIAS_NORMALIZE", default=True))
+    alias_map: dict[str, str] = field(default_factory=lambda: _parse_alias_map(
+        _env("RAG_ALIAS_MAP")))
+
+    # ---- 优化项 ----
+    # 查询嵌入缓存（LRU）：归一化后（去空白与标点）相同的查询直接复用向量，零 API 零等待
+    query_cache_size: int = field(default_factory=lambda: _env_int(
+        "RAG_QUERY_CACHE_SIZE", default=64))
+    # 目录软加权：命中块的得分 × (1 + boost × 该块所属类别的得分份额)。
+    # 实测标定：域内问题用文档类别能 5/5 路由到正确大类，故小幅加权（0.1）即可抑制跨类噪声；
+    # 设为 0 可完全关闭。
+    category_boost: float = field(default_factory=lambda: _env_float(
+        "RAG_CATEGORY_BOOST", default=0.1))
+    # 注入去重阈值：两块正文的长片段（12 字滑窗）重合率 ≥ 该值 → 视为同一事实，只留分数高的一条。
+    # 实测标定：真重复（列表 vs 表格写同样三条设置）0.17；其余组合 ≤0.03 → 阈值取 0.10
+    dedupe_min_overlap: float = field(default_factory=lambda: _env_float(
+        "RAG_DEDUPE_MIN_OVERLAP", default=0.10))
 
     # ---- 入库切块 ----
     chunk_size: int = field(default_factory=lambda: _env_int(

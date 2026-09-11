@@ -17,6 +17,7 @@ if str(_RAG_DIR) not in sys.path:
 import re
 
 import embeddings as rag_embeddings
+import health
 import rerank as rag_rerank
 import config as rag_config
 import localstore as rag_store
@@ -94,14 +95,30 @@ async def search_knowledge(
             return _merge_round_robin(per)[:top_k]
 
     # 混合召回：dense（query 向量） + BM25（bt 文本） → RRF 候选池
-    vec = query_vec or await rag_embeddings.embed_query(query)
+    vec = query_vec
+    if vec is None:
+        if not health.embed_available():
+            # 嵌入服务熔断中：直接走纯本地 BM25（离线可用，质量略降）
+            return rag_store.state().bm25_top(bt, top_k, category)
+        try:
+            vec = await rag_embeddings.embed_query(query)
+        except Exception as e:
+            health.mark_embed_down(e)
+            return rag_store.state().bm25_top(bt, top_k, category)
+
     hits = rag_store.state().hybrid_top(
         vec, bt, rag_config.settings.candidate_top_k, rag_config.settings.recall_top_k, category
     )
 
-    # 精排：候选池送 bge-reranker
+    # 精排：候选池送 bge-reranker（不可用则跳过，保留 RRF 融合顺序）
+    if not health.rerank_available():
+        return hits[:top_k]
     docs = [f"{h['question']} {h['answer']}" for h in hits]
-    ranked = await rag_rerank.rerank(query, docs, top_n=top_k)
+    try:
+        ranked = await rag_rerank.rerank(query, docs, top_n=top_k)
+    except Exception as e:
+        health.mark_rerank_down(e)
+        return hits[:top_k]
     out = []
     for idx, score in ranked:
         hit = dict(hits[idx])

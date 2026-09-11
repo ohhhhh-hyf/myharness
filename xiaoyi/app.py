@@ -1523,13 +1523,15 @@ class XiaoYiApp(App):
             sim, query_vec = await asyncio.wait_for(
                 rag_api.embed_and_max_similarity(query), timeout=8.0
             )
-            if sim < 0:
-                return "", ""          # 索引未就绪 / 上游失败：静默
-            if sim < rag_api.gate_min_similarity():
-                return "", ""          # 判定为与知识库无关：不付重排成本
+            if sim >= 0 and sim < rag_api.gate_min_similarity():
+                return "", ""          # 嵌入可用但判定为无关：不付重排成本
+            # sim < 0：嵌入服务不可达（已熔断）——仍走检索（自动降级为本地 BM25），
+            # 保证服务器无法出网时知识库依然可用
 
-            # ③ 检索（复用向量）+ 重排分数阈值过滤
-            result = await rag_api.rag_search(query, query_vec=query_vec)
+            # ③ 检索（复用向量/或走降级路径）+ 重排分数阈值过滤
+            result = await rag_api.rag_search(
+                query, query_vec=query_vec if sim >= 0 else None
+            )
         except (asyncio.TimeoutError, Exception) as e:
             if not self._rag_warned:
                 self._rag_warned = True
@@ -1537,11 +1539,14 @@ class XiaoYiApp(App):
             return "", ""
 
         if result.status == rag_api.RAG_OK:
-            hint = (
-                f"知识库命中 {len(result.hits)} 条证据"
-                f"（最高相关度 {result.top_score:.2f}）"
-            )
-            return rag_api.format_evidence(result.hits), hint
+            if result.note:
+                hint = f"知识库命中 {len(result.hits)} 条证据（{result.note}）"
+            else:
+                hint = (
+                    f"知识库命中 {len(result.hits)} 条证据"
+                    f"（最高相关度 {result.top_score:.2f}）"
+                )
+            return rag_api.format_evidence(result.hits, note=result.note), hint
 
         if result.status in (rag_api.RAG_NOT_READY, rag_api.RAG_ERROR):
             if not self._rag_warned:

@@ -224,7 +224,7 @@ MCP 连接关闭、会话落盘等清理动作。空闲状态下按 `Ctrl+C` 具
 `xiaoyi/rag/` 内置一套离线 RAG 检索模块（知识源为 `xiaoyi/rag/data/*.md`）：
 
 ```bash
-python xiaoyi/rag/build_index.py            # 入库：切块 + bge-m3 嵌入 → .xiaoyi/rag_index.json.gz
+python xiaoyi/rag/build_index.py            # 入库：切块 + bge-m3 嵌入 → xiaoyi/rag/index/rag_index.json.gz
 python xiaoyi/rag/query.py "小艺慧记有什么限制"   # 只测检索（含 RRF 与 bge 精排）
 ```
 
