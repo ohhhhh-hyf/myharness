@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>myharness · 终端里的 AI 编程助手（XiaoYi）</title>
+<meta name="description" content="myharness（XiaoYi）是一个运行在终端里的 AI 编程助手：工具调用、权限矩阵、MCP 扩展、子智能体、记忆与技能系统。一行命令装好，任意目录可用。">
+<style>
+  :root{
+    --bg:#ffffff;
+    --fg:#0a0a0a;
+    --fg-strong:#1a1a1a;
+    --muted:#5b6470;
+    --muted-2:#8a929c;
+    --accent:#0f9d76;
+    --accent-dark:#0b7d5e;
+    --accent-soft:rgba(15,157,118,.08);
+    --accent-line:rgba(15,157,118,.28);
+    --border:#e9ebee;
+    --border-soft:#f1f3f5;
+    --card:#fbfcfc;
+    --term-bg:#0d1117;
+    --term-fg:#c9d1d9;
+    --term-green:#3fb950;
+    --term-dim:#6e7681;
+    --radius:16px;
+    --radius-sm:10px;
+    --shadow:0 1px 2px rgba(10,10,10,.04),0 8px 24px -12px rgba(10,10,10,.10);
+    --shadow-lg:0 2px 4px rgba(10,10,10,.04),0 24px 48px -24px rgba(10,10,10,.18);
+    --max:1140px;
+    --font:"PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono","Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:76px}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);
+    font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3,h4{color:var(--fg-strong);line-height:1.25;margin:0}
+  p{margin:0}
+  code,kbd,pre{font-family:var(--mono)}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+
+  /* ---------- nav ---------- */
+  header.nav{
+    position:sticky;top:0;z-index:50;background:rgba(255,255,255,.86);
+    backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--border-soft);
+  }
+  .nav-inner{display:flex;align-items:center;gap:28px;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:-.01em}
+  .brand .mark{
+    width:26px;height:26px;border-radius:8px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),#32e6b9);
+    display:grid;place-items:center;color:#fff;font-size:14px;font-weight:700;
+  }
+  .nav-links{display:flex;gap:24px;margin-left:8px;font-size:14.5px;color:var(--muted)}
+  .nav-links a:hover{color:var(--fg)}
+  .nav-spacer{flex:1}
+  .nav-actions{display:flex;align-items:center;gap:12px}
+  .icon-link{
+    width:34px;height:34px;border-radius:10px;border:1px solid var(--border);
+    display:grid;place-items:center;color:var(--muted)
+  }
+  .icon-link:hover{color:var(--fg);border-color:#d7dade;background:var(--card)}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    border-radius:999px;font-weight:600;font-size:14.5px;padding:10px 20px;
+    border:1px solid transparent;cursor:pointer;transition:.18s ease;white-space:nowrap;
+  }
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 6px 16px -8px rgba(15,157,118,.6)}
+  .btn-primary:hover{background:var(--accent-dark);transform:translateY(-1px)}
+  .btn-ghost{border-color:var(--border);color:var(--fg);background:#fff}
+  .btn-ghost:hover{border-color:#d7dade;background:var(--card)}
+  .btn-lg{padding:14px 28px;font-size:16px}
+  .btn-sm{padding:8px 16px;font-size:13.5px}
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative;overflow:hidden;padding:76px 0 84px;
+    background:
+      radial-gradient(900px 420px at 12% -10%,rgba(15,157,118,.10),transparent 62%),
+      radial-gradient(700px 380px at 92% 6%,rgba(50,230,185,.12),transparent 60%);
+  }
+  .hero:after{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:linear-gradient(to right,var(--border-soft) 1px,transparent 1px),
+                     linear-gradient(to bottom,var(--border-soft) 1px,transparent 1px);
+    background-size:64px 64px;
+    mask-image:radial-gradient(720px 380px at 50% 0%,#000 20%,transparent 78%);
+    -webkit-mask-image:radial-gradient(720px 380px at 50% 0%,#000 20%,transparent 78%);
+  }
+  .hero .wrap{position:relative;z-index:1}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--accent-dark);
+    background:var(--accent-soft);border:1px solid var(--accent-line);
+    padding:5px 13px;border-radius:999px;font-weight:600
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(15,157,118,.16)}
+  h1.hero-title{
+    font-size:clamp(34px,5.2vw,58px);font-weight:750;letter-spacing:-.03em;margin:22px 0 0;
+  }
+  h1.hero-title .hl{
+    background:linear-gradient(120deg,var(--accent),#32e6b9 70%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero-sub{margin-top:20px;font-size:18px;color:var(--muted);max-width:640px}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:32px}
+  .hero-note{margin-top:16px;font-size:13.5px;color:var(--muted-2)}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:26px;margin-top:34px;font-size:13.5px;color:var(--muted)}
+  .hero-meta b{color:var(--fg);font-weight:650}
+
+  /* ---------- terminal ---------- */
+  .term{
+    margin-top:52px;background:var(--term-bg);border-radius:var(--radius);
+    box-shadow:var(--shadow-lg);border:1px solid #1f242c;overflow:hidden
+  }
+  .term-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#161b22;border-bottom:1px solid #21262d}
+  .tl{width:11px;height:11px;border-radius:50%}
+  .tl.r{background:#ff5f57}.tl.y{background:#febc2e}.tl.g{background:#28c840}
+  .term-title{margin-left:10px;font-size:12.5px;color:var(--term-dim);font-family:var(--mono)}
+  .term-body{
+    padding:20px 22px 26px;font-family:var(--mono);font-size:13.2px;line-height:1.85;
+    color:var(--term-fg);white-space:pre-wrap;overflow-x:auto
+  }
+  .term-body .u{color:#58a6ff}
+  .term-body .g{color:var(--term-green)}
+  .term-body .d{color:var(--term-dim)}
+  .term-body .y{color:#d29922}
+  .term-body .c{color:#a371f7}
+
+  /* ---------- sections ---------- */
+  section{padding:84px 0}
+  section.alt{background:var(--card);border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft)}
+  .eyebrow{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  h2.sec-title{font-size:clamp(26px,3.4vw,36px);font-weight:720;letter-spacing:-.02em;margin:12px 0 0}
+  .sec-lead{margin-top:14px;font-size:16.5px;color:var(--muted);max-width:720px}
+  .sec-head{margin-bottom:44px}
+
+  .grid{display:grid;gap:18px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+
+  .card{
+    background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+    padding:24px;box-shadow:var(--shadow);transition:.2s ease
+  }
+  .card:hover{border-color:#d9dde2;transform:translateY(-2px)}
+  .card h3{font-size:17px;font-weight:660;margin-bottom:8px}
+  .card p{font-size:14.6px;color:var(--muted)}
+  .ico{
+    width:38px;height:38px;border-radius:11px;display:grid;place-items:center;margin-bottom:14px;
+    background:var(--accent-soft);color:var(--accent-dark);border:1px solid var(--accent-line)
+  }
+  .ico svg{width:19px;height:19px;stroke-width:1.9;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+
+  .stat{display:flex;align-items:baseline;gap:10px}
+  .stat .num{font-size:32px;font-weight:750;letter-spacing:-.02em;color:var(--accent-dark)}
+  .stat .unit{font-size:13.5px;color:var(--muted-2)}
+
+  /* ---------- code blocks ---------- */
+  .code{
+    position:relative;background:#0d1117;border:1px solid #1f242c;border-radius:var(--radius-sm);
+    margin:14px 0 0;overflow:hidden
+  }
+  .code pre{
+    margin:0;padding:16px 78px 16px 18px;font-size:13px;line-height:1.75;color:#c9d1d9;overflow-x:auto
+  }
+  .code .cmt{color:#6e7681}
+  .copy{
+    position:absolute;top:9px;right:9px;font-size:12px;padding:5px 11px;border-radius:8px;
+    background:#21262d;color:#adbac7;border:1px solid #30363d;cursor:pointer;font-family:var(--font)
+  }
+  .copy:hover{background:#2d333b;color:#fff}
+  .copy.done{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  /* ---------- steps ---------- */
+  .steps{counter-reset:s;display:grid;gap:16px}
+  .step{
+    display:grid;grid-template-columns:44px 1fr;gap:18px;align-items:start;
+    background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow)
+  }
+  .step .n{
+    width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:700;font-size:15px;
+    background:var(--accent-soft);color:var(--accent-dark);border:1px solid var(--accent-line)
+  }
+  .step h3{font-size:16.5px;font-weight:660;margin-bottom:4px}
+  .step p{font-size:14.4px;color:var(--muted)}
+
+  /* ---------- tables ---------- */
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;font-size:14.6px;min-width:520px}
+  th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--border-soft)}
+  th{background:var(--card);font-weight:650;font-size:13.5px;color:var(--fg-strong);white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  td code{background:var(--accent-soft);color:var(--accent-dark);padding:2px 7px;border-radius:6px;font-size:12.8px}
+  .yes{color:var(--accent-dark);font-weight:600}
+  .no{color:#b42318;font-weight:600}
+
+  /* ---------- misc ---------- */
+  .notice{
+    display:flex;gap:14px;padding:18px 20px;border-radius:var(--radius);font-size:14.6px;
+    background:#fff8e6;border:1px solid #f2e0b5;color:#5c4708
+  }
+  .notice strong{color:#3f3005}
+  .kbd{
+    display:inline-block;font-family:var(--mono);font-size:12.5px;padding:2px 8px;border-radius:6px;
+    background:#fff;border:1px solid var(--border);box-shadow:0 1px 0 var(--border)
+  }
+  .footer{background:#0d1117;color:#9aa4af;padding:56px 0 32px;font-size:14.4px}
+  .footer h4{color:#fff;font-size:15px;margin-bottom:12px}
+  .footer a:hover{color:#fff}
+  .footer .cols{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:32px}
+  .footer ul{list-style:none;padding:0;margin:0;display:grid;gap:9px}
+  .footer .bottom{
+    margin-top:44px;padding-top:22px;border-top:1px solid #1f242c;display:flex;flex-wrap:wrap;
+    gap:12px;justify-content:space-between;font-size:13.2px;color:#6e7681
+  }
+  .dl-note{font-size:13px;color:var(--muted-2);margin-top:10px}
+  .reveal{opacity:0;transform:translateY(14px)}
+  .reveal.in{opacity:1;transform:none;transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.3,1)}
+
+  @media (max-width:900px){
+    .g4{grid-template-columns:repeat(2,1fr)}
+    .g3{grid-template-columns:repeat(2,1fr)}
+    .footer .cols{grid-template-columns:1fr 1fr}
+    .nav-links{display:none}
+  }
+  @media (max-width:640px){
+    section{padding:64px 0}
+    .g4,.g3,.g2{grid-template-columns:1fr}
+    .step{grid-template-columns:1fr}
+    .footer .cols{grid-template-columns:1fr}
+    .hero{padding:52px 0 60px}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="mark">X</span>
+      <span>myharness</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">特性</a>
+      <a href="#install">安装</a>
+      <a href="#config">配置</a>
+      <a href="#usage">使用</a>
+      <a href="#architecture">架构</a>
+    </nav>
+    <span class="nav-spacer"></span>
+    <div class="nav-actions">
+      <a class="icon-link" href="https://github.com/ohhhhh-hyf/myharness" title="GitHub 仓库" aria-label="GitHub 仓库">
+        <svg width="17" height="17" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+        </svg>
+      </a>
+      <a class="btn btn-primary btn-sm" href="myharness-setup.cmd" download>下载</a>
+    </div>
+  </div>
+</header>
+
+<a id="top"></a>
+<div class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>终端原生 · 开源 · 任意目录可用</span>
+    <h1 class="hero-title">在终端里，把代码任务<br>交给一个<span class="hl">会自己动手</span>的助手</h1>
+    <p class="hero-sub">
+      myharness（XiaoYi）是一个运行在终端中的 AI 编程助手。它在你的真实项目目录里工作，
+      通过大模型驱动工具调用来读代码、检索、改文件、跑命令并验证结果 —— 内置权限矩阵、
+      MCP 扩展、子智能体、长期记忆与上下文管理。
+    </p>
+    <div class="hero-cta">
+      <a class="btn btn-primary btn-lg" href="myharness-setup.cmd" download>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v13m0 0 5-5m-5 5-5-5M4 21h16"/>
+        </svg>
+        下载安装程序
+      </a>
+      <a class="btn btn-ghost btn-lg" href="#install">查看安装文档</a>
+    </div>
+    <p class="dl-note">Windows 一键安装脚本（.cmd，约 3 KB），双击即可装好全局 <code>xiaoyi</code> 命令。</p>
+    <div class="hero-meta">
+      <span><b>Python ≥ 3.11</b> · uv 管理环境</span>
+      <span><b>Windows / macOS / Linux</b></span>
+      <span><b>6 种</b>权限模式</span>
+      <span><b>63 个</b>MCP 工具开箱可用</span>
+    </div>
+
+    <div class="term">
+      <div class="term-bar">
+        <span class="tl r"></span><span class="tl y"></span><span class="tl g"></span>
+        <span class="term-title">xiaoyi — PowerShell</span>
+      </div>
+      <div class="term-body"><span class="d">PS C:\work\my-project&gt;</span> <span class="u">xiaoyi</span>
+<span class="d">  ● Connected to 5 MCP server(s), 63 tools registered</span>
+<span class="d">  ● filesystem: 22 tools   excel: 25 tools   playwright: 8 tools</span>
+<span class="d">  ● pdf: 7 tools           fetch: 1 tool</span>
+
+<span class="c">&gt;</span> 把这个项目的日志格式统一成 JSON，并补上单元测试
+
+<span class="g">✓ Read</span>(src/logger.py)  <span class="g">✓ Grep</span>(log_format)  <span class="g">✓ Edit</span>(src/logger.py)
+<span class="g">✓ Write</span>(tests/test_logger.py)
+<span class="y">● Bash</span>(uv run pytest -q) → 12 passed in 1.84s
+
+  已改为结构化输出，失败分支也补齐了测试。要我顺手加上日志级别过滤吗？
+
+<span class="d">╭─ default · Shift+Tab 切换权限模式 ─ / 查看命令 ─────────────────╮</span></div>
+    </div>
+  </div>
+</div>
+
+<section id="highlights">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">核心要点</div>
+      <h2 class="sec-title">四个让它真正好用的设计</h2>
+    </div>
+    <div class="grid g4">
+      <div class="card reveal">
+        <div class="stat"><span class="num">1</span><span class="unit">条命令</span></div>
+        <h3 style="margin-top:14px">任意目录可用</h3>
+        <p>装好后在任何文件夹敲 <code>xiaoyi</code> 即可启动，项目根自动取当前目录 —— 不需要先 <code>cd</code> 到某个固定位置。</p>
+      </div>
+      <div class="card reveal">
+        <div class="stat"><span class="num">63</span><span class="unit">个 MCP 工具</span></div>
+        <h3 style="margin-top:14px">开箱即用</h3>
+        <p>内置 5 台基于 uvx 的 MCP 服务器：文件系统、网页抓取、浏览器自动化、PDF 处理、Excel 表格，无需 Node 环境。</p>
+      </div>
+      <div class="card reveal">
+        <div class="stat"><span class="num">6</span><span class="unit">种权限模式</span></div>
+        <h3 style="margin-top:14px">可控的自主性</h3>
+        <p>读操作放行、写文件与执行命令按模式处理；再叠加用户级/项目级/本地级三层规则文件，精细到命令模式。</p>
+      </div>
+      <div class="card reveal">
+        <div class="stat"><span class="num">8</span><span class="unit">大能力模块</span></div>
+        <h3 style="margin-top:14px">不是一个裸壳</h3>
+        <p>权限矩阵、路径沙箱、危险命令检测、子智能体、记忆、上下文压缩与回溯、技能与钩子、RAG 知识库。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="alt">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">功能总览</div>
+      <h2 class="sec-title">八项核心能力</h2>
+      <p class="sec-lead">从交互界面到上下文管理，每一层都为"在真实项目里可靠地完成任务"服务。</p>
+    </div>
+    <div class="grid g3">
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg></div>
+        <h3>终端原生界面</h3>
+        <p>基于 Textual 构建，支持流式输出、工具调用可视化、命令补全与用法提示；退出后对话内容保留在终端回看区。</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v4m0 10v4M3 12h4m10 0h4"/><circle cx="12" cy="12" r="4"/></svg></div>
+        <h3>多模型接入</h3>
+        <p>支持 Anthropic、OpenAI 以及任意 OpenAI 兼容端点（DeepSeek、GLM、Qwen、本地推理服务），三种协议自由切换。</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"/></svg></div>
+        <h3>完整工具体系</h3>
+        <p>文件读写、目录遍历、内容检索、命令执行等内置工具，配合权限矩阵、危险命令检测与路径沙箱形成多层防护。</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4M15 21h4a2 2 0 0 0 2-2v-4M3 15v4a2 2 0 0 0 2 2h4M21 9V5a2 2 0 0 0-2-2h-4"/></svg></div>
+        <h3>MCP 扩展</h3>
+        <p>作为 MCP 客户端接入 stdio 与 Streamable HTTP 两类服务器，其工具自动注册进工具表（命名 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>）供模型调用。</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 9v3m-4 3 3-3m4 3-3-3"/></svg></div>
+        <h3>子智能体协作</h3>
+        <p>内置 Explore（只读检索）、Plan（方案规划）、Verification（结果验证）与 general-purpose 四类子智能体，也支持用 Markdown 定义项目级/用户级自定义子智能体。</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-4 12.7V19h8v-3.3A7 7 0 0 0 12 3Z"/><path d="M10 22h4"/></svg></div>
+        <h3>记忆系统</h3>
+        <p>自动从对话中提炼要点形成长期记忆，后续请求按相关性检索注入；记忆以可读的 Markdown 存放在项目与用户两级目录。</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M8 10h8M8 14h5"/></svg></div>
+        <h3>上下文管理</h3>
+        <p>工具结果落盘与剪枝、超限自动压缩（摘要替换历史）、会话持久化，以及文件级回溯（rewind）。</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m12 12 8-4.5M12 12v9M12 12 4 7.5"/></svg></div>
+        <h3>可扩展机制</h3>
+        <p>技能（Skills）、生命周期钩子（Hooks）与斜杠命令体系，均支持项目级与用户级扩展；另有 RAG 知识库与团队协作模式。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">安装</div>
+      <h2 class="sec-title">三种装法，任选一种</h2>
+      <p class="sec-lead">共同前提：Python ≥ 3.11 与 uv。uv 是 Rust 写的单文件工具，装它本身就是一条命令。</p>
+    </div>
+
+    <div class="grid g2" style="margin-bottom:34px">
+      <div class="card reveal" style="display:flex;flex-direction:column;justify-content:space-between">
+        <div>
+          <h3 style="font-size:19px">① 一键脚本（Windows 推荐）</h3>
+          <p style="margin-top:8px">
+            下载并双击运行，脚本会自动：检查/安装 uv → 克隆仓库 → 按 <code>uv.lock</code> 钉住依赖版本 →
+            安装全局 <code>xiaoyi</code> 命令 → 写好用户级配置模板。装完新开终端即可使用。
+          </p>
+        </div>
+        <div style="margin-top:20px">
+          <a class="btn btn-primary" href="myharness-setup.cmd" download>下载 myharness-setup.cmd</a>
+          <p class="dl-note">若提示找不到命令，执行一次 <code>uv tool update-shell</code> 并重开终端。</p>
+        </div>
+      </div>
+      <div class="card reveal">
+        <h3 style="font-size:19px">② 从源码安装（开发推荐）</h3>
+        <p style="margin-top:8px">克隆仓库后，用仓库自己的虚拟环境运行 —— 这套环境由 <code>uv sync</code> 按 lock 维护，改代码立即生效。</p>
+        <div class="code">
+          <button class="copy" onclick="copyCode(this)">复制</button>
+          <pre>git clone https://github.com/ohhhhh-hyf/myharness.git
+cd myharness
+uv sync
+uv run xiaoyi</pre>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="font-size:19px;margin:0 0 6px">③ 装成全局命令，之后任意目录可用</h3>
+    <p class="reveal" style="color:var(--muted);font-size:14.8px;margin-bottom:22px">
+      核心是"生成一个叫 <code>xiaoyi</code> 的可执行文件并放进 PATH"，同时一份用户级配置让它在任何目录都能读到模型设置。
+    </p>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="n">1</div>
+        <div>
+          <h3>同步依赖并导出锁定的版本清单</h3>
+          <p>uv 的 <code>tool install</code> 默认不读 <code>uv.lock</code>，会解析到最新版依赖；导出成清单后，安装时按清单钉住版本。</p>
+          <div class="code">
+            <button class="copy" onclick="copyCode(this)">复制</button>
+            <pre>cd path\to\myharness
+uv sync
+uv export --format requirements-txt --no-dev --no-emit-project --no-hashes -o "%USERPROFILE%\.xiaoyi\tool-constraints.txt"</pre>
+          </div>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="n">2</div>
+        <div>
+          <h3>安装全局命令</h3>
+          <p><code>--editable</code> 让命令读取仓库源码（改完即生效），<code>-c</code> 让依赖版本严格按上一步的清单。</p>
+          <div class="code">
+            <button class="copy" onclick="copyCode(this)">复制</button>
+            <pre>uv tool install --editable . -c "%USERPROFILE%\.xiaoyi\tool-constraints.txt"
+uv tool update-shell        <span class="cmt"># 提示 .local\bin 不在 PATH 时执行，然后重开终端</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="n">3</div>
+        <div>
+          <h3>写一份用户级配置</h3>
+          <p>配置查找顺序为「用户级 → 当前目录项目级 → 项目本地级」，且只看当前目录、不向上找父目录；缺了用户级配置，在别的目录启动会直接报错退出。</p>
+          <div class="code">
+            <button class="copy" onclick="copyCode(this)">复制</button>
+            <pre>mkdir "%USERPROFILE%\.xiaoyi" 2>nul
+notepad "%USERPROFILE%\.xiaoyi\config.yaml"</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:26px">
+      <div class="reveal">
+        <p style="font-size:14.6px;color:var(--muted);margin-bottom:8px">最小配置（<code>%USERPROFILE%\.xiaoyi\config.yaml</code>）：</p>
+        <div class="code">
+          <button class="copy" onclick="copyCode(this)">复制</button>
+          <pre>providers:
+  - name: deepseek
+    protocol: openai-compat
+    base_url: https://api.deepseek.com
+    model: deepseek-v4-flash
+    api_key: ""            <span class="cmt"># 留空则读环境变量 OPENAI_API_KEY</span>
+permission_mode: default</pre>
+        </div>
+      </div>
+      <div class="reveal">
+        <p style="font-size:14.6px;color:var(--muted);margin-bottom:8px">其他系统（macOS / Linux）：</p>
+        <div class="code">
+          <button class="copy" onclick="copyCode(this)">复制</button>
+          <pre>curl -LsSf https://astral.sh/uv/install.sh | sh
+git clone https://github.com/ohhhhh-hyf/myharness.git
+cd myharness &amp;&amp; uv sync
+uv export --format requirements-txt --no-dev \
+  --no-emit-project --no-hashes -o ~/.xiaoyi/tool-constraints.txt
+uv tool install --editable . -c ~/.xiaoyi/tool-constraints.txt</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="config" class="alt">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">配置</div>
+      <h2 class="sec-title">配置说明</h2>
+      <p class="sec-lead">配置文件按「用户级 → 项目级 → 项目本地级」逐层合并，后者覆盖前者；MCP 服务器按名字合并，钩子叠加。</p>
+    </div>
+
+    <h3 class="reveal" style="font-size:19px;margin:0 0 14px">providers · 模型提供方</h3>
+    <div class="table-wrap reveal" style="margin-bottom:38px">
+      <table>
+        <thead><tr><th>字段</th><th>必填</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><code>name</code></td><td>是</td><td>提供方标识</td></tr>
+          <tr><td><code>protocol</code></td><td>是</td><td><code>anthropic</code> / <code>openai</code> / <code>openai-compat</code></td></tr>
+          <tr><td><code>base_url</code></td><td>是</td><td>接口地址，兼容端点填自己的服务地址</td></tr>
+          <tr><td><code>model</code></td><td>是</td><td>模型名</td></tr>
+          <tr><td><code>api_key</code></td><td>否</td><td>留空则回退到环境变量（anthropic → <code>ANTHROPIC_API_KEY</code>，其余 → <code>OPENAI_API_KEY</code>）</td></tr>
+          <tr><td><code>context_window</code></td><td>否</td><td>上下文窗口；0 或缺省时尝试自动解析</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="reveal" style="font-size:19px;margin:0 0 6px">permission_mode · 权限模式</h3>
+    <p class="reveal" style="color:var(--muted);font-size:14.6px;margin-bottom:14px">读类操作始终放行；写文件与执行命令按模式处理，也可启动时用 <code>--mode</code> 临时覆盖。</p>
+    <div class="table-wrap reveal" style="margin-bottom:38px">
+      <table>
+        <thead><tr><th>模式</th><th>读取</th><th>写文件</th><th>执行命令</th></tr></thead>
+        <tbody>
+          <tr><td><code>default</code></td><td class="yes">放行</td><td class="no">询问</td><td class="no">询问</td></tr>
+          <tr><td><code>acceptEdits</code></td><td class="yes">放行</td><td class="yes">放行</td><td class="no">询问</td></tr>
+          <tr><td><code>plan</code></td><td class="yes">放行</td><td class="no">询问</td><td class="no">询问</td></tr>
+          <tr><td><code>bypassPermissions</code></td><td class="yes">放行</td><td class="yes">放行</td><td class="yes">放行</td></tr>
+          <tr><td><code>dontAsk</code></td><td class="yes">放行</td><td class="yes">放行</td><td class="yes">放行</td></tr>
+          <tr><td><code>custom</code></td><td class="no">询问</td><td class="no">询问</td><td class="no">询问</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="reveal" style="font-size:19px;margin:0 0 14px">mcp_servers · MCP 服务器</h3>
+    <div class="grid g2" style="margin-bottom:38px">
+      <div class="reveal">
+        <div class="code">
+          <button class="copy" onclick="copyCode(this)">复制</button>
+          <pre>mcp_servers:
+  <span class="cmt"># 项目自带的文件系统 server（uvx 拉起，不依赖 Node）</span>
+  - name: filesystem
+    command: uvx
+    args: ["fsext-mcp-server", "--lock-root", "."]
+  <span class="cmt"># 网页抓取</span>
+  - name: fetch
+    command: uvx
+    args: ["mcp-server-fetch"]
+  <span class="cmt"># Streamable HTTP 远程服务</span>
+  - name: remote
+    url: https://example.com/mcp
+    headers:
+      Authorization: Bearer ${MCP_TOKEN}   <span class="cmt"># 支持环境变量展开</span></pre>
+        </div>
+      </div>
+      <div class="reveal">
+        <p style="color:var(--muted);font-size:14.6px">
+          MCP 工具自动注册进工具表，命名约定为 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>（双下划线），
+          可用 <code>/mcp</code> 查看连接状态与各服务器的工具数。
+        </p>
+        <p style="color:var(--muted);font-size:14.6px;margin-top:12px">
+          默认配置里的五台服务器共提供 <b>63 个工具</b>：filesystem 22、excel 25、playwright 8、pdf 7、fetch 1。
+          Windows 上若改用 npm 版服务器，命令需要写成 <code>npx.cmd</code>（裸 <code>npx</code> 会报 WinError 2）。
+        </p>
+        <p style="color:var(--muted);font-size:14.6px;margin-top:12px">
+          playwright 需要浏览器二进制：<code>uvx --from playwright playwright install chromium</code>。
+        </p>
+      </div>
+    </div>
+
+    <h3 class="reveal" style="font-size:19px;margin:0 0 14px">hooks · 生命周期钩子</h3>
+    <div class="grid g2">
+      <div class="reveal">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>事件</th><th>用途</th></tr></thead>
+            <tbody>
+              <tr><td><code>session_start</code></td><td>会话开始</td></tr>
+              <tr><td><code>turn_start</code></td><td>每轮开始</td></tr>
+              <tr><td><code>pre_tool_use</code></td><td>配合 reject 可拦截工具调用</td></tr>
+              <tr><td><code>post_tool_use</code></td><td>工具执行后</td></tr>
+              <tr><td><code>file_change</code></td><td>文件变更</td></tr>
+              <tr><td><code>error</code> / <code>shutdown</code></td><td>出错 / 退出</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="reveal">
+        <p style="color:var(--muted);font-size:14.6px">
+          钩子动作类型包括 <code>command</code>、<code>prompt</code>、<code>http</code>、<code>agent</code>；
+          <code>pre_tool_use</code> 可拦截，其余事件可声明 <code>async</code> 异步执行。
+        </p>
+        <p style="color:var(--muted);font-size:14.6px;margin-top:14px">其他开关：</p>
+        <ul style="margin:8px 0 0;padding-left:20px;color:var(--muted);font-size:14.6px">
+          <li><code>enable_fork</code> —— 子智能体继承当前对话上下文</li>
+          <li><code>enable_verification_agent</code> —— 启用内置验证子智能体</li>
+          <li><code>enable_rag</code> —— 本地 RAG 知识库（检索证据注入 + KnowledgeSearch 工具）</li>
+          <li><code>teammate_mode</code> / <code>enable_coordinator_mode</code> —— 团队协作与协调者模式</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="usage">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">使用指南</div>
+      <h2 class="sec-title">上手只要记住几个键</h2>
+    </div>
+    <div class="grid g2">
+      <div class="reveal">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>按键</th><th>作用</th></tr></thead>
+            <tbody>
+              <tr><td><span class="kbd">Esc</span></td><td>打断正在生成的回复（弹窗打开时优先关闭弹窗）</td></tr>
+              <tr><td><span class="kbd">Shift</span>+<span class="kbd">Tab</span></td><td>循环切换权限模式</td></tr>
+              <tr><td><span class="kbd">Tab</span></td><td>命令补全；输入 <code>/</code> 时弹出命令列表</td></tr>
+              <tr><td><span class="kbd">Ctrl</span>+<span class="kbd">C</span></td><td>生成中为打断；空闲时为退出</td></tr>
+              <tr><td><span class="kbd">Ctrl</span>+<span class="kbd">O</span></td><td>折叠 / 展开工具调用块</td></tr>
+              <tr><td><span class="kbd">PgUp</span> / <span class="kbd">PgDn</span></td><td>滚动对话区域</td></tr>
+              <tr><td><span class="kbd">↑</span> / <span class="kbd">↓</span></td><td>浏览输入历史</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="reveal">
+        <h3 style="font-size:17px;margin-bottom:10px">命令行与交互约定</h3>
+        <div class="code">
+          <button class="copy" onclick="copyCode(this)">复制</button>
+          <pre>xiaoyi                        <span class="cmt"># 交互式界面</span>
+xiaoyi -p "解释这个项目的目录结构"  <span class="cmt"># 单次执行并输出</span>
+xiaoyi --mode acceptEdits      <span class="cmt"># 临时覆盖权限模式</span></pre>
+        </div>
+        <ul style="margin:18px 0 0;padding-left:20px;color:var(--muted);font-size:14.6px">
+          <li>输入以 <code>/</code> 开头即为命令，例如 <code>/mcp</code> 查看 MCP 状态、<code>/status</code> 查看当前会话信息</li>
+          <li>输入 <code>@</code> 可引用项目内文件路径</li>
+          <li>图像输入：把图片<b>拖入终端</b>或复制后粘贴（终端插入的是路径），提交时自动识别为图片附件；支持 png / jpg / jpeg / gif / webp，单张上限 5 MB</li>
+          <li>路径与文字无需留空格，<code>D:\a\shot.png这个报错怎么看</code> 也能正确切分</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="notice reveal" style="margin-top:34px">
+      <div>
+        <strong>状态目录：</strong>harness 会在启动目录下创建 <code>.xiaoyi/</code>，用于存放 <code>debug.log</code>、
+        <code>sessions/</code>（会话记录）、<code>memories.md</code>（长期记忆）与权限规则。
+        它同时也是路径沙箱的边界 —— 若该目录是 git 仓库，记得把 <code>.xiaoyi/</code> 加进 <code>.gitignore</code>。
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="architecture" class="alt">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">架构</div>
+      <h2 class="sec-title">代码结构与扩展点</h2>
+      <p class="sec-lead">主循环、TUI、工具与权限各自独立；MCP、子智能体、技能与钩子都是可插拔的扩展面。</p>
+    </div>
+    <div class="grid g3">
+      <div class="card reveal">
+        <h3>核心</h3>
+        <p><code>agent.py</code> 主循环与上下文管理；<code>app.py</code> 终端界面（Textual）；<code>client.py</code> 三种协议的模型客户端。</p>
+      </div>
+      <div class="card reveal">
+        <h3>工具与权限</h3>
+        <p><code>tools/</code> 工具注册与实现；<code>permissions/</code> 权限矩阵、规则引擎、危险命令检测与路径沙箱。</p>
+      </div>
+      <div class="card reveal">
+        <h3>扩展</h3>
+        <p><code>mcp/</code> MCP 客户端与工具包装；<code>agents/</code> 子智能体；<code>memory/</code>、<code>skills/</code>、<code>hooks/</code>、<code>teams/</code>、<code>worktree/</code>。</p>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:18px">
+      <div class="card reveal">
+        <h3>项目级指令</h3>
+        <p>在项目根放 <code>XIAOYI.md</code> 或 <code>.xiaoyi/XIAOYI.md</code>，内容会注入到每次请求；也支持 <code>@include</code> 引用项目内的其他文件（越界路径会被拦截）。用户级指令放在 <code>~/.xiaoyi/XIAOYI.md</code>。</p>
+      </div>
+      <div class="card reveal">
+        <h3>开发与测试</h3>
+        <div class="code">
+          <button class="copy" onclick="copyCode(this)">复制</button>
+          <pre>uv run pytest -q     <span class="cmt"># 跑测试</span>
+uv run xiaoyi        <span class="cmt"># 从源码启用</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="download-cta">
+  <div class="wrap" style="text-align:center">
+    <div class="reveal">
+      <div class="eyebrow">开始使用</div>
+      <h2 class="sec-title" style="margin-top:12px">把终端变成你的工作台</h2>
+      <p class="sec-lead" style="margin:14px auto 0">
+        下载安装脚本，或者直接克隆仓库从源码运行。装好之后，在任何项目目录敲 <code>xiaoyi</code> 就能开始。
+      </p>
+      <div class="hero-cta" style="justify-content:center;margin-top:30px">
+        <a class="btn btn-primary btn-lg" href="myharness-setup.cmd" download>下载安装程序</a>
+        <a class="btn btn-ghost btn-lg" href="https://github.com/ohhhhh-hyf/myharness">在 GitHub 上查看源码</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <div class="brand" style="color:#fff"><span class="mark">X</span><span>myharness</span></div>
+        <p style="margin-top:14px;max-width:320px;color:#8b949e">
+          运行在终端里的 AI 编程助手。以工具调用为核心，把权限、上下文与扩展能力做成一等公民。
+        </p>
+      </div>
+      <div>
+        <h4>文档</h4>
+        <ul>
+          <li><a href="#features">功能总览</a></li>
+          <li><a href="#install">安装指南</a></li>
+          <li><a href="#config">配置说明</a></li>
+          <li><a href="#usage">使用指南</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>资源</h4>
+        <ul>
+          <li><a href="https://github.com/ohhhhh-hyf/myharness">GitHub 仓库</a></li>
+          <li><a href="https://github.com/ohhhhh-hyf/myharness/blob/main/README.md">README</a></li>
+          <li><a href="https://docs.astral.sh/uv/">uv 文档</a></li>
+          <li><a href="https://modelcontextprotocol.io/">MCP 协议</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>下载</h4>
+        <ul>
+          <li><a href="myharness-setup.cmd" download>Windows 安装脚本</a></li>
+          <li><a href="#install">macOS / Linux 命令</a></li>
+          <li><a href="https://github.com/ohhhhh-hyf/myharness">源码</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="bottom">
+      <span>myharness · XiaoYi · 终端 AI 编程助手</span>
+      <span>本页为静态文档页，无外部依赖，可离线打开</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---------------- 复制代码 ---------------- */
+function copyCode(btn){
+  var pre = btn.parentElement.querySelector("pre");
+  if(!pre) return;
+  var text = pre.innerText;
+  var done = function(){
+    var old = btn.textContent;
+    btn.textContent = "已复制";
+    btn.classList.add("done");
+    setTimeout(function(){ btn.textContent = old; btn.classList.remove("done"); }, 1600);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallback(text, done); });
+  } else {
+    fallback(text, done);
+  }
+}
+function fallback(text, done){
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); done(); } catch(e) {}
+  ta.remove();
+}
+
+/* ---------------- 滚动入场 ---------------- */
+(function(){
+  var items = [].slice.call(document.querySelectorAll(".reveal"));
+  var showAll = function(){ items.forEach(function(el){ el.classList.add("in"); }); };
+  if(!("IntersectionObserver" in window)){ showAll(); return; }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }
+    });
+  }, {rootMargin:"0px 0px -8% 0px", threshold:.02});
+  items.forEach(function(el){
+    var top = el.getBoundingClientRect().top;
+    if(top < (window.innerHeight || 0) + 40){ el.classList.add("in"); } else { io.observe(el); }
+  });
+  setTimeout(function(){ showAll(); io.disconnect(); }, 1600);
+})();
+</script>
+</body>
+</html>
