@@ -259,7 +259,7 @@
           <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
         </svg>
       </a>
-      <a class="btn btn-primary btn-sm" href="myharness-setup.cmd" download>下载</a>
+      <a class="btn btn-primary btn-sm" href="myharness-setup.cmd" download onclick="return downloadInstaller(event)">下载</a>
     </div>
   </div>
 </header>
@@ -275,7 +275,7 @@
       MCP 扩展、子智能体、长期记忆与上下文管理。
     </p>
     <div class="hero-cta">
-      <a class="btn btn-primary btn-lg" href="myharness-setup.cmd" download>
+      <a class="btn btn-primary btn-lg" href="myharness-setup.cmd" download onclick="return downloadInstaller(event)">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 3v13m0 0 5-5m-5 5-5-5M4 21h16"/>
         </svg>
@@ -283,7 +283,7 @@
       </a>
       <a class="btn btn-ghost btn-lg" href="#install">查看安装文档</a>
     </div>
-    <p class="dl-note">Windows 一键安装脚本（.cmd，约 3 KB），双击即可装好全局 <code>xiaoyi</code> 命令。</p>
+    <p class="dl-note">安装脚本已内嵌在本页 —— 单个 HTML 文件即可分发：拷到任何一台 Windows 上打开本页、点按钮下载（约 3 KB），双击运行就能装好全局 <code>xiaoyi</code> 命令。</p>
     <div class="hero-meta">
       <span><b>Python ≥ 3.11</b> · uv 管理环境</span>
       <span><b>Windows / macOS / Linux</b></span>
@@ -415,7 +415,7 @@
           </p>
         </div>
         <div style="margin-top:20px">
-          <a class="btn btn-primary" href="myharness-setup.cmd" download>下载 myharness-setup.cmd</a>
+          <a class="btn btn-primary" href="myharness-setup.cmd" download onclick="return downloadInstaller(event)">下载 myharness-setup.cmd</a>
           <p class="dl-note">若提示找不到命令，执行一次 <code>uv tool update-shell</code> 并重开终端。</p>
         </div>
       </div>
@@ -712,7 +712,7 @@ uv run xiaoyi        <span class="cmt"># 从源码启用</span></pre>
         下载安装脚本，或者直接克隆仓库从源码运行。装好之后，在任何项目目录敲 <code>xiaoyi</code> 就能开始。
       </p>
       <div class="hero-cta" style="justify-content:center;margin-top:30px">
-        <a class="btn btn-primary btn-lg" href="myharness-setup.cmd" download>下载安装程序</a>
+        <a class="btn btn-primary btn-lg" href="myharness-setup.cmd" download onclick="return downloadInstaller(event)">下载安装程序</a>
         <a class="btn btn-ghost btn-lg" href="https://github.com/ohhhhh-hyf/myharness">在 GitHub 上查看源码</a>
       </div>
     </div>
@@ -749,7 +749,7 @@ uv run xiaoyi        <span class="cmt"># 从源码启用</span></pre>
       <div>
         <h4>下载</h4>
         <ul>
-          <li><a href="myharness-setup.cmd" download>Windows 安装脚本</a></li>
+          <li><a href="myharness-setup.cmd" download onclick="return downloadInstaller(event)">Windows 安装脚本</a></li>
           <li><a href="#install">macOS / Linux 命令</a></li>
           <li><a href="https://github.com/ohhhhh-hyf/myharness">源码</a></li>
         </ul>
@@ -763,6 +763,28 @@ uv run xiaoyi        <span class="cmt"># 从源码启用</span></pre>
 </footer>
 
 <script>
+/* ---------------- 内嵌安装脚本：下载时按 CRLF 生成 .cmd ---------------- */
+var INSTALLER_TEXT = "@echo off\nsetlocal EnableExtensions\ntitle myharness (XiaoYi) setup\necho ============================================================\necho   myharness / XiaoYi  -  one-click setup for Windows\necho ============================================================\necho.\n\nset \"GIT_URL=https://github.com/ohhhhh-hyf/myharness.git\"\nset \"RAW=https://raw.githubusercontent.com/ohhhhh-hyf/myharness/main\"\nset \"CFGDIR=%USERPROFILE%\\.xiaoyi\"\nset \"CONSTRAINTS=%CFGDIR%\\tool-constraints.txt\"\n\nREM ---------- 1/5 uv ----------\nwhere uv >nul 2>nul\nif not errorlevel 1 goto :uv_ok\necho [1/5] uv was not found. uv is required (https://docs.astral.sh/uv/).\nset /p ANS=Install uv now using the official script? [y/N] \nif /i not \"%ANS%\"==\"y\" goto :no_uv\npowershell -NoProfile -ExecutionPolicy Bypass -Command \"irm https://astral.sh/uv/install.ps1 | iex\"\nset \"PATH=%USERPROFILE%\\.local\\bin;%PATH%\"\nwhere uv >nul 2>nul\nif errorlevel 1 goto :no_uv\n:uv_ok\necho [1/5] uv: OK\n\nREM ---------- 2/5 pinned version list ----------\nif not exist \"%CFGDIR%\" mkdir \"%CFGDIR%\"\necho [2/5] downloading the pinned version list ...\npowershell -NoProfile -ExecutionPolicy Bypass -Command \"try { Invoke-WebRequest -UseBasicParsing -Uri '%RAW%/docs/tool-constraints.txt' -OutFile '%CONSTRAINTS%' } catch { exit 1 }\"\nif errorlevel 1 goto :fail_fetch\n\nREM ---------- 3/5 install from git ----------\necho [3/5] installing the global \"xiaoyi\" command (fetched from git, versions pinned) ...\nuv tool install --refresh \"git+%GIT_URL%\" -c \"%CONSTRAINTS%\"\nif errorlevel 1 goto :fail_install\nuv tool update-shell >nul 2>nul\n\nREM ---------- 4/5 config template ----------\nif exist \"%CFGDIR%\\config.yaml\" goto :cfg_ok\necho [4/5] writing config template ...\n>  \"%CFGDIR%\\config.yaml\" echo providers:\n>> \"%CFGDIR%\\config.yaml\" echo   - name: deepseek\n>> \"%CFGDIR%\\config.yaml\" echo     protocol: openai-compat\n>> \"%CFGDIR%\\config.yaml\" echo     base_url: https://api.deepseek.com\n>> \"%CFGDIR%\\config.yaml\" echo     model: deepseek-v4-flash\n>> \"%CFGDIR%\\config.yaml\" echo     api_key: \"\"\n>> \"%CFGDIR%\\config.yaml\" echo permission_mode: default\n:cfg_ok\necho [4/5] config: %CFGDIR%\\config.yaml\n\nREM ---------- 5/5 ----------\necho [5/5] done.\necho.\necho   Next steps:\necho     1) Open a NEW terminal window.\necho     2) Set your API key:  setx OPENAI_API_KEY \"sk-...\"\necho     3) Run:  xiaoyi\necho.\necho No source checkout is created on this machine: the code is installed\necho into a tool environment under %USERPROFILE%\\.local and uv's cache.\necho To update later, simply run this script again.\necho If \"xiaoyi\" is not found, run:  uv tool update-shell   (then reopen the terminal)\npause\nexit /b 0\n\n:no_uv\necho.\necho [x] uv is required. Install it, then run this script again:\necho     powershell -c \"irm https://astral.sh/uv/install.ps1 ^| iex\"\npause\nexit /b 1\n:fail_fetch\necho.\necho [x] Could not download the pinned version list from GitHub.\necho     Check your network or proxy, then run this script again.\npause\nexit /b 1\n:fail_install\necho.\necho [x] Installation failed. Common causes:\necho     - no network access to github.com or pypi.org\necho     - a running \"xiaoyi\" session is holding the tool environment\npause\nexit /b 1\n";
+
+function downloadInstaller(ev){
+  try {
+    var lf = String.fromCharCode(10), cr = String.fromCharCode(13);
+    var text = INSTALLER_TEXT.split(cr).join("").split(lf).join(cr + lf);
+    var blob = new Blob([text], {type: "application/octet-stream"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "myharness-setup.cmd";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    if (ev) ev.preventDefault();
+    return false;
+  } catch (err) {
+    return true;
+  }
+}
 /* ---------------- 复制代码 ---------------- */
 function copyCode(btn){
   var pre = btn.parentElement.querySelector("pre");
