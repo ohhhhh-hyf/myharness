@@ -119,39 +119,6 @@ mcp_servers:
    #   command: uvx
    #   args: ["--with", "mcp<2", "mcp-server-sqlite", "--db-path", "data.db"]
 
-#     env:
-#       TOKEN: ${MY_TOKEN}          # 支持 ${ENV_VAR} 展开
-#   - name: remote-api
-#     url: https://example.com/mcp
-#     headers:
-#       Authorization: Bearer xxx
-
-# ---------- Hooks（可选）----------
-# 合法事件：session_start / session_end / turn_start / turn_end /
-#   pre_tool_use / post_tool_use / pre_send / post_receive /
-#   startup / shutdown / error / compact / permission_request /
-#   file_change / command_execute
-# action.type：command | prompt | http | agent
-# 约束：reject 仅用于 pre_tool_use；async 不能用于 pre_tool_use；
-#   if 条件支持 field == "value" / != / =~ 以及 && / ||（两者不可混用）。
-# hooks:
-#   - id: deny-rm
-#     event: pre_tool_use
-#     if: 'tool_name == "Bash" && tool_args.command =~ "rm -rf"'
-#     action:
-#       type: command
-#       command: echo "危险命令已拦截"
-#     reject: true
-#   - id: notify-session
-#     event: session_start
-#     async: true
-#     action:
-#       type: http
-#       url: https://example.com/webhook
-#       method: POST
-#       body: '{"msg": "session started"}'
-
-# ---------- Worktree 清理（可选，均为默认值）----------
 worktree:
   symlink_directories: ["node_modules", ".venv", "vendor"]  # 硬链接为目录
   stale_cleanup_interval: 3600    # 清理检查间隔（秒）

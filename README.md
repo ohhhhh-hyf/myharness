@@ -128,14 +128,23 @@ MCP 服务器列表，`command`（stdio）与 `url`（Streamable HTTP）二选�
 
 ```yaml
 mcp_servers:
+  # 项目自带的文件系统 server（12 个工具，名称与官方 Node 版一致）：uv 拉起，不依赖 Node/npx
   - name: filesystem
-    command: npx.cmd        # Windows 下需带 .cmd 后缀
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "D:/project"]
+    command: uv
+    args: ["run", "--no-sync", "python", "-m", "xiaoyi.mcp.servers.filesystem", "."]
+  # 外部 server 走 npm 时，Windows 下需带 .cmd 后缀
+  - name: git
+    command: npx.cmd
+    args: ["-y", "@modelcontextprotocol/server-git", "D:/project"]
   - name: remote
     url: https://example.com/mcp
     headers:
       Authorization: Bearer ${MCP_TOKEN}   # 支持 ${环境变量} 展开
 ```
+
+`xiaoyi/mcp/servers/` 放项目自带的 server 实现。`--no-sync` 让子进程启动时不触发环境重装
+（harness 自身占着 `.venv` 里的 `xiaoyi.exe` 时重装会失败）；该命令要求 `uv` 在 PATH 上、
+且工作目录是项目根——子进程继承 harness 的工作目录，末尾的 `.` 即"允许访问启动目录"。
 
 ### hooks
 
@@ -305,7 +314,10 @@ uv run pytest -q     # 运行测试
 ## 注意事项
 
 - Windows 环境下，MCP 的 stdio 服务器若通过 npx 启动，命令需写为 `npx.cmd`；直接写
-  `npx` 会因可执行文件解析失败而报错。
+  `npx` 会因可执行文件解析失败而报错。内网/公司网络里 npx 的依赖解析尤其不可靠（npx 缓存
+  装到一半被打断后会一直报 `ERR_MODULE_NOT_FOUND`，且 npx 不会自行修复），所以文件系统
+  server 改成了项目自带的 Python 实现（`uv run --no-sync python -m xiaoyi.mcp.servers.filesystem .`），
+  完全绕开 Node。
 - MCP 工具在工具表中的命名为 `mcp__<server>__<tool>`（双下划线）。
 - 为保留对话的终端回看能力，界面不使用备用屏（alternate screen）渲染；退出时会自动清理
   界面占用区域。
