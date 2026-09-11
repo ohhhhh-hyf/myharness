@@ -51,6 +51,27 @@ echo [4/6] writing config template ...
 >> "%CFGDIR%\config.yaml" echo     model: deepseek-v4-flash
 >> "%CFGDIR%\config.yaml" echo     api_key: ""
 >> "%CFGDIR%\config.yaml" echo permission_mode: default
+>> "%CFGDIR%\config.yaml" echo enable_fork: false
+>> "%CFGDIR%\config.yaml" echo enable_verification_agent: false
+>> "%CFGDIR%\config.yaml" echo enable_rag: true
+>> "%CFGDIR%\config.yaml" echo teammate_mode: ""
+>> "%CFGDIR%\config.yaml" echo enable_coordinator_mode: false
+>> "%CFGDIR%\config.yaml" echo mcp_servers:
+>> "%CFGDIR%\config.yaml" echo   - name: filesystem
+>> "%CFGDIR%\config.yaml" echo     command: uvx
+>> "%CFGDIR%\config.yaml" echo     args: ["fsext-mcp-server", "--lock-root", "."]
+>> "%CFGDIR%\config.yaml" echo   - name: fetch
+>> "%CFGDIR%\config.yaml" echo     command: uvx
+>> "%CFGDIR%\config.yaml" echo     args: ["mcp-server-fetch"]
+>> "%CFGDIR%\config.yaml" echo   - name: playwright
+>> "%CFGDIR%\config.yaml" echo     command: uvx
+>> "%CFGDIR%\config.yaml" echo     args: ["--with", "mcp<2", "playwright-server"]
+>> "%CFGDIR%\config.yaml" echo   - name: pdf
+>> "%CFGDIR%\config.yaml" echo     command: uvx
+>> "%CFGDIR%\config.yaml" echo     args: ["pdf-mcp-server"]
+>> "%CFGDIR%\config.yaml" echo   - name: excel
+>> "%CFGDIR%\config.yaml" echo     command: uvx
+>> "%CFGDIR%\config.yaml" echo     args: ["excel-mcp-server", "stdio"]
 :cfg_ok
 echo [4/6] config: %CFGDIR%\config.yaml
 goto :key_step
