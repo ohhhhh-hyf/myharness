@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>导数的几何意义与单调性/极值应用</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f6f5f0;
+      color: #1a1a1a;
+      font-family: "Latin Modern Roman", "Computer Modern Roman", "CMU Serif", "Times New Roman", Times, "Songti SC", "SimSun", "STSong", serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 460px;
+      height: 100vh;
+      min-height: 680px;
+    }
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #fbfaf7 radial-gradient(#e5dfd5 1.2px, transparent 1.2px);
+      background-size: 26px 26px;
+    }
+    #cy {
+      width: 100%;
+      height: 100%;
+    }
+    .canvas-toolbar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #d4d0c7;
+      border-radius: 4px;
+      padding: 6px 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+      backdrop-filter: blur(8px);
+    }
+    .tool-btn {
+      appearance: none;
+      border: 1px solid #d4d0c7;
+      background: #faf9f6;
+      color: #222222;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 3px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tool-btn:hover {
+      background: #ffffff;
+      border-color: #0047ab;
+      color: #0047ab;
+      box-shadow: 0 1px 3px rgba(0, 71, 171, 0.15);
+    }
+    .tool-btn.is-active {
+      background: #0047ab;
+      color: #ffffff;
+      border-color: #003380;
+    }
+
+    aside {
+      border-left: 1.5px solid #d4d0c7;
+      background: #ffffff;
+      padding: 24px 26px;
+      overflow-y: auto;
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    /* Search Input */
+    .search-wrap {
+      position: relative;
+    }
+    .search-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px 12px;
+      background: #faf9f6;
+      border: 1px solid #d4d0c7;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 13px;
+      color: #111111;
+      transition: all 0.18s ease;
+    }
+    .search-input:focus {
+      outline: none;
+      background: #ffffff;
+      border-color: #0047ab;
+      box-shadow: 0 0 0 2px rgba(0, 71, 171, 0.12);
+    }
+
+    /* Filter Panel */
+    .filter-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .filter-toggles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .filter-tag {
+      padding: 3px 9px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border-radius: 3px;
+      cursor: pointer;
+      user-select: none;
+      border: 1px solid #d4d0c7;
+      background: #faf9f6;
+      color: #444444;
+      transition: all 0.15s ease;
+    }
+    .filter-tag:hover {
+      border-color: #0047ab;
+      color: #0047ab;
+    }
+    .filter-tag.is-active {
+      background: #0047ab;
+      color: #ffffff;
+      border-color: #003380;
+    }
+
+    /* Legend */
+    .panel-head {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #333333;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #e2ded6;
+      padding-bottom: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .legend {
+      display: grid;
+      gap: 5px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #333333;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 3px;
+      transition: background 0.15s ease;
+    }
+    .legend-item:hover {
+      background: #faf9f6;
+    }
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    /* Detail Inspector (Placed below Legend) */
+    .detail-container {
+      min-height: 160px;
+    }
+    .detail-empty {
+      border: 1px dashed #d6d1c7;
+      background: #faf9f6;
+      border-radius: 4px;
+      padding: 26px 16px;
+      text-align: center;
+      color: #736f66;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .detail-empty .empty-icon {
+      margin-bottom: 8px;
+      color: #8c857b;
+      opacity: 0.85;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .detail-empty .empty-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2b2b2b;
+      margin-bottom: 4px;
+      letter-spacing: 0.2px;
+    }
+    .detail-empty .empty-desc {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: #7a756b;
+      max-width: 250px;
+      margin: 0 auto;
+    }
+
+    /* Detail Card (When Selected) */
+    .detail-card {
+      border: 1px solid #dedad2;
+      border-radius: 4px;
+      padding: 15px;
+      background: #faf9f6;
+      line-height: 1.6;
+      font-size: 13px;
+      word-break: break-word;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+    }
+    .node-header {
+      margin-bottom: 10px;
+    }
+    .node-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #111111;
+      letter-spacing: 0.2px;
+      line-height: 1.35;
+      margin-bottom: 6px;
+    }
+    .node-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1.5px 7px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.5;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .badge-concept { background: #f0f4ff; color: #0047ab; border-color: #c6d7ff; }
+    .badge-formula { background: #f6ffed; color: #237804; border-color: #b7eb8f; }
+    .badge-method { background: #f9f0ff; color: #531dab; border-color: #d3adf7; }
+    .badge-problem { background: #fff7e6; color: #d46b08; border-color: #ffd591; }
+    .badge-pitfall { background: #fff1f0; color: #cf1322; border-color: #ffa39e; }
+    .badge-muted { background: #f3f2ee; color: #595959; border-color: #dcd8cf; }
+    .badge-new { background: #fffbe6; color: #b86a04; border-color: #ffe58f; font-weight: 700; }
+    .badge-section { background: #ffffff; color: #333333; border-color: #d4d0c7; font-weight: 500; }
+
+    /* Detail Blocks */
+    .detail-block {
+      margin-top: 12px;
+    }
+    .block-label {
+      color: #4f4b44;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      margin-bottom: 5px;
+    }
+    .def-box {
+      background: #ffffff;
+      border: 1px solid #dedad2;
+      border-left: 3px solid #0047ab;
+      border-radius: 2px;
+      padding: 9px 12px;
+      font-size: 12.5px;
+      color: #222222;
+      line-height: 1.65;
+    }
+
+    /* Structural Relations */
+    .relation-grid {
+      background: #ffffff;
+      border: 1px solid #dedad2;
+      border-radius: 3px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .relation-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .relation-kind {
+      flex: 0 0 52px;
+      color: #666666;
+      font-size: 11px;
+      font-weight: 600;
+      padding-top: 2px;
+    }
+    .relation-kind-warn { color: #cf1322; }
+    .relation-kind-diff { color: #531dab; }
+    .relation-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      flex: 1;
+    }
+
+    /* Interactive Chips */
+    .interactive-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: #ffffff;
+      border: 1px solid #d4d0c7;
+      color: #0047ab;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .interactive-chip:hover {
+      background: #f0f4ff;
+      border-color: #0047ab;
+      box-shadow: 0 1px 3px rgba(0, 71, 171, 0.15);
+    }
+    .chip-prereq { background: #fffbf0; border-color: #ffe1b3; color: #b86a04; }
+    .chip-app { background: #f0f7ff; border-color: #b9d8ff; color: #0047ab; }
+    .chip-warn { background: #fff1f0; border-color: #ffa39e; color: #cf1322; }
+    .chip-diff { background: #f9f0ff; border-color: #d3adf7; color: #531dab; }
+
+    /* Edges List */
+    .edge-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .edge-item {
+      padding: 7px 9px;
+      background: #ffffff;
+      border: 1px solid #dedad2;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .edge-flow {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+      font-weight: 600;
+      color: #111111;
+    }
+    .edge-arrow {
+      color: #888888;
+      font-size: 10px;
+    }
+    .edge-ev {
+      color: #4b4843;
+      font-size: 11.5px;
+      margin-top: 4px;
+      background: #faf9f6;
+      padding: 4px 8px;
+      border-radius: 2px;
+      border-left: 2px solid #b5b0a5;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    /* Edge Detail Card (When an edge is tapped) */
+    .edge-card {
+      border: 1px solid #dedad2;
+      border-radius: 4px;
+      padding: 15px;
+      background: #faf9f6;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+    }
+    .edge-triplet-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 10px 6px;
+      background: #ffffff;
+      border: 1px solid #dedad2;
+      border-radius: 3px;
+    }
+    .edge-arrow-label {
+      padding: 2px 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: 3px;
+      border: 1px solid transparent;
+    }
+    .edge-evidence-box {
+      background: #ffffff;
+      border: 1px solid #dedad2;
+      border-radius: 3px;
+      padding: 8px 12px;
+      color: #2b2b2b;
+      font-size: 12px;
+      line-height: 1.6;
+      font-style: italic;
+    }
+    .edge-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .nav-chip {
+      flex: 1;
+      appearance: none;
+      border: 1px solid #d4d0c7;
+      background: #ffffff;
+      color: #0047ab;
+      padding: 6px 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav-chip:hover {
+      background: #f0f4ff;
+      border-color: #0047ab;
+    }
+
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; grid-template-rows: minmax(520px, 68vh) auto; }
+      aside { border-left: 0; border-top: 1.5px solid #d4d0c7; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="canvas-container">
+      <div class="canvas-toolbar">
+        <button class="tool-btn" onclick="fitCanvas()">⟲ 适应画布</button>
+        <button class="tool-btn" id="btn-backbone" onclick="toggleBackbone(this)">✦ 核心推导骨架</button>
+        <button class="tool-btn" id="btn-new" onclick="toggleNewOnly(this)">★ 仅看本场新增</button>
+      </div>
+      <div id="cy"></div>
+    </div>
+    <aside>
+      <div class="search-wrap">
+        <input type="text" id="kg-search" class="search-input" placeholder="检索知识点、定理或题型..." autocomplete="off" />
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-toggles">
+          <span class="filter-tag is-active" data-type="concept" onclick="toggleType('concept', this)">核心概念</span>
+          <span class="filter-tag is-active" data-type="formula" onclick="toggleType('formula', this)">公式定理</span>
+          <span class="filter-tag is-active" data-type="method" onclick="toggleType('method', this)">解法技巧</span>
+          <span class="filter-tag is-active" data-type="problem" onclick="toggleType('problem', this)">题型场景</span>
+          <span class="filter-tag is-active" data-type="pitfall" onclick="toggleType('pitfall', this)">易错警示</span>
+        </div>
+      </div>
+
+      <div class="panel-head">章节图例</div>
+      <div id="legend" class="legend"></div>
+
+      <div class="panel-head" style="margin-top: 8px;">详细信息</div>
+      <div id="detail" class="detail-container"></div>
+    </aside>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.31.2/dist/cytoscape.min.js"></script>
+  <script>
+    const elements = [{"data": {"id": "函数", "name": "函数", "label": "函数", "type": "concept", "definition": "每一个输入 x 都对应唯一确定的 y。", "section": "函数的核心三要素与定义域优先原则", "degree": 5, "size": 74, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 365.0, "y": 0.0}}, {"data": {"id": "映射", "name": "映射", "label": "映射", "type": "concept", "definition": "每一个输入 x 都对应唯一确定的 y。", "section": "函数的核心三要素与定义域优先原则", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 371.9, "y": 77.1}}, {"data": {"id": "定义域", "name": "定义域", "label": "定义域", "type": "pitfall", "definition": "解任何函数题，第一件事必须先把定义域写在草稿纸最显眼位置！", "section": "前后联动自查", "degree": 7, "size": 80, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 174.6, "y": 218.9}}, {"data": {"id": "对应法则", "name": "对应法则", "label": "对应法则", "type": "concept", "definition": "两函数相等必须满足定义域和对应法则完全相同，值域自然相同。", "section": "函数的核心三要素与定义域优先原则", "degree": 1, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 306.9, "y": 152.6}}, {"data": {"id": "值域", "name": "值域", "label": "值域", "type": "concept", "definition": "两函数相等必须满足定义域和对应法则完全相同，值域自然相同。", "section": "函数的核心三要素与定义域优先原则", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 237.5, "y": 73.6}}, {"data": {"id": "分母不能为0", "name": "分母不能为0", "label": "分母不\n能为0", "type": "pitfall", "definition": "常见限制：分母不能为0。", "section": "函数的核心三要素与定义域优先原则", "degree": 1, "size": 85, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 167.2, "y": 41.0}}, {"data": {"id": "偶次根号下必须≥0", "name": "偶次根号下必须≥0", "label": "偶次根号下\n必须≥0", "type": "pitfall", "definition": "常见限制：偶次根号下必须≥0。", "section": "函数的核心三要素与定义域优先原则", "degree": 1, "size": 107, "text_max_width": 73, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 134.3, "y": -53.0}}, {"data": {"id": "对数的真数必须严格大于0", "name": "对数的真数必须严格大于0", "label": "对数的真数\n必须严格大\n于0", "type": "pitfall", "definition": "常见限制：对数的真数必须严格大于0。", "section": "函数的核心三要素与定义域优先原则", "degree": 1, "size": 116, "text_max_width": 73, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 237.5, "y": -73.6}}, {"data": {"id": "复合函数", "name": "复合函数", "label": "复合函数", "type": "concept", "definition": "复合函数的定义域是各层约束条件的“交集”。", "section": "函数的核心三要素与定义域优先原则", "degree": 2, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 300.8, "y": -118.2}}, {"data": {"id": "交集", "name": "交集", "label": "交集", "type": "concept", "definition": "复合函数的定义域是各层约束条件的“交集”。", "section": "函数的核心三要素与定义域优先原则", "degree": 2, "size": 66, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 398.7, "y": -99.6}}, {"data": {"id": "单调性", "name": "单调性", "label": "单调性", "type": "concept", "definition": "若差值 < 0 则为单调递增，差值 > 0 则为单调递减。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 3, "size": 69, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -81.2, "y": 355.8}}, {"data": {"id": "五步作差法", "name": "五步作差法", "label": "五步作\n差法", "type": "method", "definition": "严格证明五步规范（大题必须写全，不能跳步）：① 取值；② 作差；③ 变形；④ 定号；⑤ 结论。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 6, "size": 85, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -148.0, "y": 357.0}}, {"data": {"id": "取值", "name": "取值", "label": "取值", "type": "method", "definition": "在目标区间上任取 x1, x2，且设 x1 < x2。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -214.1, "y": 304.4}}, {"data": {"id": "作差", "name": "作差", "label": "作差", "type": "method", "definition": "列出 f(x1) - f(x2)。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -141.6, "y": 242.5}}, {"data": {"id": "变形", "name": "变形", "label": "变形", "type": "method", "definition": "核心是因式分解、配方或通分，变形成乘积商的形式。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 4, "size": 71, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -133.2, "y": 176.2}}, {"data": {"id": "因式分解", "name": "因式分解", "label": "因式分解", "type": "method", "definition": "变形核心之一。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 1, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -71.8, "y": 118.3}}, {"data": {"id": "配方", "name": "配方", "label": "配方", "type": "method", "definition": "变形核心之一。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -20.8, "y": 198.8}}, {"data": {"id": "通分", "name": "通分", "label": "通分", "type": "method", "definition": "变形核心之一。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 43.6, "y": 216.5}}, {"data": {"id": "定号", "name": "定号", "label": "定号", "type": "method", "definition": "结合区间条件判断差值的正负号。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 92.2, "y": 285.6}}, {"data": {"id": "结论", "name": "结论", "label": "结论", "type": "method", "definition": "若差值 < 0 则为单调递增，差值 > 0 则为单调递减。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 3, "size": 69, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": 5.2, "y": 324.6}}, {"data": {"id": "单调递增", "name": "单调递增", "label": "单调递增", "type": "concept", "definition": "在某个开区间内，若 f'(x) > 0 恒成立，则 f(x) 严格单调递增。", "section": "导数判定单调性", "degree": 1, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -328.9, "y": 158.4}}, {"data": {"id": "单调递减", "name": "单调递减", "label": "单调递减", "type": "concept", "definition": "在某个开区间内，若 f'(x) < 0 恒成立，则严格单调递减。", "section": "导数判定单调性", "degree": 1, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -243.3, "y": 1.8}}, {"data": {"id": "同增异减", "name": "同增异减", "label": "同增异减", "type": "formula", "definition": "外层 y=f(u) 与内层 u=g(x) 单调性一致则复合后递增，相反则递减。", "section": "单调性的证明与判定（传统五步作差法）", "degree": 1, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -21.5, "y": 385.8}}, {"data": {"id": "并集符号∪", "name": "并集符号∪", "label": "并集符\n号∪", "type": "pitfall", "definition": "单调区间切忌用并集符号“∪”连接！", "section": "课堂易错典型反思与自省", "degree": 1, "size": 85, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -328.9, "y": -158.4}}, {"data": {"id": "导数", "name": "导数", "label": "导数", "type": "concept", "definition": "下节课讲高二工具“导数”，一条求导公式秒杀单调性判定。", "section": "课堂易错典型反思与自省", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "history"}, "position": {"x": -144.2, "y": -69.4}}, {"data": {"id": "导数的几何意义", "name": "导数的几何意义", "label": "导数的几\n何意义", "type": "concept", "definition": "导数 f'(x0) 本质就是曲线 y=f(x) 在点 P(x0, y0) 处的瞬时变化率，也就是切线的斜率 k。", "section": "导数的几何意义与切线避坑", "degree": 2, "size": 95, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": -81.2, "y": -355.8}}, {"data": {"id": "瞬时变化率", "name": "瞬时变化率", "label": "瞬时变\n化率", "type": "concept", "definition": "导数 f'(x0) 本质就是曲线 y=f(x) 在点 P(x0, y0) 处的瞬时变化率。", "section": "导数的几何意义与切线避坑", "degree": 1, "size": 85, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 1.5, "y": -374.6}}, {"data": {"id": "切线", "name": "切线", "label": "切线", "type": "concept", "definition": "导数 f'(x0) 本质就是曲线 y=f(x) 在点 P(x0, y0) 处的瞬时变化率，也就是切线的斜率 k。", "section": "导数的几何意义与切线避坑", "degree": 2, "size": 66, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 88.8, "y": -307.5}}, {"data": {"id": "斜率", "name": "斜率", "label": "斜率", "type": "concept", "definition": "导数 f'(x0) 本质就是曲线 y=f(x) 在点 P(x0, y0) 处的瞬时变化率，也就是切线的斜率 k。", "section": "导数的几何意义与切线避坑", "degree": 1, "size": 63, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 9.7, "y": -227.8}}, {"data": {"id": "在点P处的切线", "name": "在点P处的切线", "label": "在点P处\n的切线", "type": "method", "definition": "点 P 一定是切点，斜率直接 k = f'(x0)，代入点斜式即可。", "section": "导数的几何意义与切线避坑", "degree": 3, "size": 95, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": -35.6, "y": -156.0}}, {"data": {"id": "过点P的切线", "name": "过点P的切线", "label": "过点P\n的切线", "type": "method", "definition": "点 P 不一定是切点！必须先设切点坐标为 (t, f(t))，列出斜率方程联立求解 t。", "section": "导数的几何意义与切线避坑", "degree": 2, "size": 85, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": -144.8, "y": -141.7}}, {"data": {"id": "切点", "name": "切点", "label": "切点", "type": "concept", "definition": "在点 P 处的切线，点 P 一定是切点；过点 P 的切线，点 P 不一定是切点。", "section": "导数的几何意义与切线避坑", "degree": 2, "size": 66, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": -145.2, "y": -254.1}}, {"data": {"id": "点斜式", "name": "点斜式", "label": "点斜式", "type": "method", "definition": "在点 P 处的切线，斜率直接 k = f'(x0)，代入点斜式即可。", "section": "导数的几何意义与切线避坑", "degree": 1, "size": 68, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": -163.9, "y": -336.8}}, {"data": {"id": "对勾函数", "name": "对勾函数", "label": "对勾函数", "type": "concept", "definition": "f(x) = x + 1/x。", "section": "导数判定单调性", "degree": 0, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": -124.2, "y": 208.8}}, {"data": {"id": "极值", "name": "极值", "label": "极值", "type": "concept", "definition": "极值判别：令 f'(x) = 0 找到可疑驻点。", "section": "极值与闭区间最值规范", "degree": 3, "size": 69, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 227.6, "y": -285.4}}, {"data": {"id": "驻点", "name": "驻点", "label": "驻点", "type": "concept", "definition": "令 f'(x) = 0 找到可疑驻点。", "section": "极值与闭区间最值规范", "degree": 2, "size": 66, "text_max_width": 33, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 294.6, "y": -218.9}}, {"data": {"id": "穿针引线图", "name": "穿针引线图", "label": "穿针引\n线图", "type": "method", "definition": "画符号穿针引线图：导数左正右负 ➔ 极大值点；导数左负右正 ➔ 极小值点；导数符号不变则不是极值点。", "section": "极值与闭区间最值规范", "degree": 3, "size": 85, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 271.2, "y": -97.7}}, {"data": {"id": "极大值点", "name": "极大值点", "label": "极大值点", "type": "concept", "definition": "导数左正右负 ➔ 极大值点。", "section": "极值与闭区间最值规范", "degree": 1, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 155.7, "y": -136.0}}, {"data": {"id": "极小值点", "name": "极小值点", "label": "极小值点", "type": "concept", "definition": "导数左负右正 ➔ 极小值点。", "section": "极值与闭区间最值规范", "degree": 1, "size": 80, "text_max_width": 59, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 66.5, "y": -166.8}}, {"data": {"id": "闭区间最值", "name": "闭区间最值", "label": "闭区间\n最值", "type": "method", "definition": "先算出区间内所有极值，再算出两个端点值 f(a) 与 f(b)，全部排开比大小，最大的就是最大值，最小的就是最小值。", "section": "极值与闭区间最值规范", "degree": 2, "size": 85, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 34.9, "y": -286.2}}, {"data": {"id": "端点值", "name": "端点值", "label": "端点值", "type": "concept", "definition": "闭区间 [a, b] 上的最值求法：再算出两个端点值 f(a) 与 f(b)。", "section": "极值与闭区间最值规范", "degree": 1, "size": 68, "text_max_width": 46, "font_size": 12.5, "anchor": false, "origin": "new"}, "position": {"x": 155.7, "y": -301.8}}, {"data": {"id": "edge-0", "source": "函数", "target": "映射", "label": "等价于", "evidence": "函数本质是映射：每一个输入 x 都对应唯一确定的 y。", "relation": "等价于", "origin": "history"}}, {"data": {"id": "edge-1", "source": "定义域", "target": "函数", "label": "属于", "evidence": "函数的核心三要素与定义域优先原则。", "relation": "属于", "origin": "history"}}, {"data": {"id": "edge-2", "source": "对应法则", "target": "函数", "label": "属于", "evidence": "两函数相等必须满足定义域和对应法则完全相同。", "relation": "属于", "origin": "history"}}, {"data": {"id": "edge-3", "source": "值域", "target": "函数", "label": "属于", "evidence": "两函数相等必须满足定义域和对应法则完全相同，值域自然相同。", "relation": "属于", "origin": "history"}}, {"data": {"id": "edge-4", "source": "定义域", "target": "函数", "label": "用于", "evidence": "解任何函数题，第一件事必须先把定义域写在草稿纸最显眼位置！", "relation": "用于", "origin": "history"}}, {"data": {"id": "edge-5", "source": "分母不能为0", "target": "定义域", "label": "前提", "evidence": "常见限制：分母不能为0。", "relation": "前提", "origin": "history"}}, {"data": {"id": "edge-6", "source": "偶次根号下必须≥0", "target": "定义域", "label": "前提", "evidence": "常见限制：偶次根号下必须≥0。", "relation": "前提", "origin": "history"}}, {"data": {"id": "edge-7", "source": "对数的真数必须严格大于0", "target": "定义域", "label": "前提", "evidence": "常见限制：对数的真数必须严格大于0。", "relation": "前提", "origin": "history"}}, {"data": {"id": "edge-8", "source": "复合函数", "target": "交集", "label": "包含", "evidence": "复合函数的定义域是各层约束条件的“交集”。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-9", "source": "交集", "target": "定义域", "label": "属于", "evidence": "复合函数的定义域是各层约束条件的“交集”。", "relation": "属于", "origin": "history"}}, {"data": {"id": "edge-10", "source": "五步作差法", "target": "单调性", "label": "用于", "evidence": "严格证明五步规范（大题必须写全，不能跳步）。", "relation": "用于", "origin": "history"}}, {"data": {"id": "edge-11", "source": "五步作差法", "target": "取值", "label": "包含", "evidence": "① 取值：在目标区间上任取 x1, x2，且设 x1 < x2。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-12", "source": "五步作差法", "target": "作差", "label": "包含", "evidence": "② 作差：列出 f(x1) - f(x2)。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-13", "source": "五步作差法", "target": "变形", "label": "包含", "evidence": "③ 变形：核心是因式分解、配方或通分。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-14", "source": "五步作差法", "target": "定号", "label": "包含", "evidence": "④ 定号：结合区间条件判断差值的正负号。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-15", "source": "五步作差法", "target": "结论", "label": "包含", "evidence": "⑤ 结论：若差值 < 0 则为单调递增，差值 > 0 则为单调递减。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-16", "source": "变形", "target": "因式分解", "label": "包含", "evidence": "核心是因式分解、配方或通分。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-17", "source": "变形", "target": "配方", "label": "包含", "evidence": "核心是因式分解、配方或通分。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-18", "source": "变形", "target": "通分", "label": "包含", "evidence": "核心是因式分解、配方或通分。", "relation": "包含", "origin": "history"}}, {"data": {"id": "edge-19", "source": "结论", "target": "单调递增", "label": "导致", "evidence": "若差值 < 0 则为单调递增。", "relation": "导致", "origin": "history"}}, {"data": {"id": "edge-20", "source": "结论", "target": "单调递减", "label": "导致", "evidence": "差值 > 0 则为单调递减。", "relation": "导致", "origin": "history"}}, {"data": {"id": "edge-21", "source": "同增异减", "target": "复合函数", "label": "用于", "evidence": "复合函数单调性口诀：“同增异减”。", "relation": "用于", "origin": "history"}}, {"data": {"id": "edge-22", "source": "并集符号∪", "target": "单调性", "label": "导致", "evidence": "单调区间切忌用并集符号“∪”连接！写“∪”直接扣分。", "relation": "导致", "origin": "history"}}, {"data": {"id": "edge-23", "source": "导数", "target": "单调性", "label": "用于", "evidence": "下节课讲高二工具“导数”，一条求导公式秒杀单调性判定。", "relation": "用于", "origin": "history"}}, {"data": {"id": "edge-24", "source": "导数的几何意义", "target": "瞬时变化率", "label": "等价于", "evidence": "导数 f'(x0) 本质就是曲线 y=f(x) 在点 P(x0, y0) 处的瞬时变化率。", "relation": "等价于", "origin": "new"}}, {"data": {"id": "edge-25", "source": "导数的几何意义", "target": "切线", "label": "等价于", "evidence": "导数 f'(x0) 本质就是曲线 y=f(x) 在点 P(x0, y0) 处的瞬时变化率，也就是切线的斜率 k。", "relation": "等价于", "origin": "new"}}, {"data": {"id": "edge-26", "source": "切线", "target": "斜率", "label": "包含", "evidence": "也就是切线的斜率 k。", "relation": "包含", "origin": "new"}}, {"data": {"id": "edge-27", "source": "在点P处的切线", "target": "切点", "label": "前提", "evidence": "在点 P 处的切线：点 P 一定是切点。", "relation": "前提", "origin": "new"}}, {"data": {"id": "edge-28", "source": "过点P的切线", "target": "在点P处的切线", "label": "区别于", "evidence": "过点 P 的切线：点 P 不一定是切点！必须先设切点坐标为 (t, f(t))，列出斜率方程联立求解 t。", "relation": "区别于", "origin": "new"}}, {"data": {"id": "edge-29", "source": "在点P处的切线", "target": "点斜式", "label": "用于", "evidence": "斜率直接 k = f'(x0)，代入点斜式即可。", "relation": "用于", "origin": "new"}}, {"data": {"id": "edge-30", "source": "过点P的切线", "target": "切点", "label": "用于", "evidence": "必须先设切点坐标为 (t, f(t))，列出斜率方程联立求解 t。", "relation": "用于", "origin": "new"}}, {"data": {"id": "edge-31", "source": "极值", "target": "驻点", "label": "前提", "evidence": "极值判别：令 f'(x) = 0 找到可疑驻点。", "relation": "前提", "origin": "new"}}, {"data": {"id": "edge-32", "source": "穿针引线图", "target": "极值", "label": "用于", "evidence": "画符号穿针引线图：导数左正右负 ➔ 极大值点；导数左负右正 ➔ 极小值点。", "relation": "用于", "origin": "new"}}, {"data": {"id": "edge-33", "source": "穿针引线图", "target": "极大值点", "label": "导致", "evidence": "导数左正右负 ➔ 极大值点。", "relation": "导致", "origin": "new"}}, {"data": {"id": "edge-34", "source": "穿针引线图", "target": "极小值点", "label": "导致", "evidence": "导数左负右正 ➔ 极小值点。", "relation": "导致", "origin": "new"}}, {"data": {"id": "edge-35", "source": "闭区间最值", "target": "端点值", "label": "包含", "evidence": "再算出两个端点值 f(a) 与 f(b)。", "relation": "包含", "origin": "new"}}, {"data": {"id": "edge-36", "source": "闭区间最值", "target": "极值", "label": "前提", "evidence": "先算出区间内所有极值，再算出两个端点值 f(a) 与 f(b)。", "relation": "前提", "origin": "new"}}, {"data": {"id": "edge-37", "source": "定义域", "target": "驻点", "label": "前提", "evidence": "求导解出的驻点必须在原函数定义域内，超出定义域直接舍弃。", "relation": "前提", "origin": "new"}}];
+    const sectionColors = {"函数的核心三要素与定义域优先原则": "#38bdf8", "前后联动自查": "#22c55e", "单调性的证明与判定（传统五步作差法）": "#f59e0b", "导数判定单调性": "#fb7185", "课堂易错典型反思与自省": "#8b5cf6", "导数的几何意义与切线避坑": "#14b8a6", "极值与闭区间最值规范": "#38bdf8"};
+    const relationColors = {"包含": "#64748b", "属于": "#64748b", "用于": "#2563eb", "定义": "#16a34a", "前提": "#ea580c", "前置": "#ea580c", "等价于": "#9333ea", "转化": "#0f766e", "区别于": "#c026d3", "导致": "#dc2626", "相关": "#475569", "对比/配套": "#0f766e", "同考法": "#475569", "互相支撑": "#9333ea"};
+    const detail = document.getElementById('detail');
+    const legend = document.getElementById('legend');
+
+    function renderEmptyState() {
+      return `
+        <div class="detail-empty">
+          <div class="empty-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9e978e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="6" cy="6" r="3"></circle>
+              <circle cx="18" cy="18" r="3"></circle>
+              <line x1="8.5" y1="8.5" x2="15.5" y2="15.5"></line>
+            </svg>
+          </div>
+          <div class="empty-title">未选择任何对象</div>
+          <div class="empty-desc">在左侧画布中点击任意节点或连线，查看完整定义、关联路径与原文依据</div>
+        </div>
+      `;
+    }
+    detail.innerHTML = renderEmptyState();
+
+    Object.entries(sectionColors).forEach(([name, color]) => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `<span class="swatch" style="background:${color}"></span><span>${name}</span>`;
+      item.onclick = () => filterSection(name);
+      legend.appendChild(item);
+    });
+    if (elements.some((el) => el.data && (el.data.origin === 'new' || el.data.origin === 'history'))) {
+      [
+        ['历史（已有）', '#94a3b8'],
+        ['新增（本场）', '#f59e0b'],
+      ].forEach(([name, color]) => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `<span class="swatch" style="background:${color}"></span><span>${name}</span>`;
+        legend.appendChild(item);
+      });
+    }
+
+    if (!window.cytoscape) {
+      detail.textContent = 'Cytoscape.js 未加载。请联网后重新打开，或使用同目录 SVG 文件演示。';
+    } else {
+      const cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements,
+        wheelSensitivity: 0.18,
+        minZoom: 0.18,
+        maxZoom: 2.6,
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'label': 'data(label)',
+              'text-wrap': 'wrap',
+              'text-max-width': ele => ele.data('text_max_width') || (ele.data('size') * 0.78),
+              'font-family': '"Latin Modern Roman", "Computer Modern Roman", "Times New Roman", Times, "Songti SC", "SimSun", serif',
+              'font-size': ele => ele.data('font_size') || (ele.data('anchor') ? 15 : 12.5),
+              'font-weight': 700,
+              'color': ele => ele.data('anchor') ? '#ffffff' : '#111111',
+              'text-valign': 'center',
+              'text-halign': 'center',
+              'shape': 'ellipse',
+              'width': 'data(size)',
+              'height': 'data(size)',
+              'background-color': ele => sectionColors[ele.data('section')] || '#94a3b8',
+              'background-opacity': ele => {
+                if (ele.data('origin') === 'new') return ele.data('anchor') ? 1 : 0.85;
+                if (ele.data('origin') === 'history') return ele.data('anchor') ? 0.55 : 0.22;
+                return ele.data('anchor') ? 0.92 : 0.35;
+              },
+              'border-color': ele => {
+                if (ele.data('origin') === 'new') return '#b86a04';
+                const t = ele.data('type');
+                if (t === 'formula') return '#237804';
+                if (t === 'method') return '#531dab';
+                if (t === 'problem') return '#d46b08';
+                if (t === 'pitfall') return '#cf1322';
+                return '#ffffff';
+              },
+              'border-width': ele => ele.data('origin') === 'new' ? 3.5 : (ele.data('anchor') ? 2.5 : 2),
+              'shadow-blur': ele => ele.data('anchor') ? 12 : (ele.data('origin') === 'new' ? 8 : 3),
+              'shadow-color': ele => ele.data('origin') === 'new' ? '#ffe58f' : (sectionColors[ele.data('section')] || '#94a3b8'),
+              'shadow-opacity': ele => ele.data('anchor') ? 0.3 : 0.16,
+              'shadow-offset-x': 0,
+              'shadow-offset-y': 2
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'curve-style': 'bezier',
+              'target-arrow-shape': 'triangle',
+              'arrow-scale': 1.15,
+              'target-arrow-color': ele => relationColors[ele.data('relation')] || '#64748b',
+              'line-color': ele => relationColors[ele.data('relation')] || '#64748b',
+              'line-opacity': ele => ele.data('origin') === 'new' ? 0.92 : (ele.data('origin') === 'history' ? 0.32 : 0.52),
+              'width': ele => ele.data('origin') === 'new' ? 2.6 : 1.4,
+              'label': 'data(label)',
+              'font-size': 10,
+              'font-family': '"Latin Modern Roman", "Times New Roman", serif',
+              'font-weight': 600,
+              'color': '#333333',
+              'text-background-color': '#faf9f6',
+              'text-background-opacity': 0.88,
+              'text-background-padding': 3,
+              'text-rotation': 'autorotate'
+            }
+          },
+          {
+            selector: '.faded',
+            style: { 'opacity': 0.12, 'text-opacity': 0.12 }
+          },
+          {
+            selector: 'node.selected',
+            style: { 'border-width': 4.5, 'border-color': '#0047ab', 'z-index': 15 }
+          },
+          {
+            selector: 'edge.selected',
+            style: { 'width': 3.6, 'line-color': '#0047ab', 'target-arrow-color': '#0047ab', 'line-opacity': 1, 'z-index': 20 }
+          }
+        ],
+        layout: {
+          name: 'cose',
+          animate: false,
+          randomize: false,
+          componentSpacing: 115,
+          nodeRepulsion: 9500,
+          idealEdgeLength: edge => edge.data('relation') === '包含' || edge.data('relation') === '属于' ? 88 : 120,
+          edgeElasticity: 72,
+          nestingFactor: 0.9,
+          gravity: 0.52,
+          numIter: 2400
+        }
+      });
+
+      const esc = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[ch]);
+
+      const cleanName = (val) => String(val || '').split(String.fromCharCode(10)).join('').split(String.fromCharCode(13)).join('').trim();
+
+      window.focusNode = (name, ev) => {
+        if (ev) ev.stopPropagation();
+        const cleanTarget = cleanName(name);
+        const target = cy.nodes().filter(n => {
+          const nName = cleanName(n.data('name'));
+          const nLabel = cleanName(n.data('label'));
+          const nId = String(n.id() || '').trim();
+          return nName === cleanTarget || nLabel === cleanTarget || nId === cleanTarget;
+        });
+        if (target.length) {
+          cy.animate({
+            center: { eles: target },
+            zoom: Math.max(cy.zoom(), 1.25),
+            duration: 450,
+            easing: 'ease-in-out-cubic'
+          });
+          target.emit('tap');
+        }
+      };
+
+      // ── Step 3 工具箱交互逻辑 ──────────────────────────────
+      window.fitCanvas = () => {
+        cy.animate({
+          fit: { padding: 48 },
+          duration: 400,
+          easing: 'ease-in-out-cubic'
+        });
+      };
+
+      let backboneOnly = false;
+      window.toggleBackbone = (btn) => {
+        backboneOnly = !backboneOnly;
+        btn.classList.toggle('is-active', backboneOnly);
+        applyFilters();
+      };
+
+      let newOnly = false;
+      window.toggleNewOnly = (btn) => {
+        newOnly = !newOnly;
+        btn.classList.toggle('is-active', newOnly);
+        applyFilters();
+      };
+
+      const activeTypes = new Set(['concept', 'formula', 'method', 'problem', 'pitfall']);
+      window.toggleType = (type, btn) => {
+        if (activeTypes.has(type)) {
+          activeTypes.delete(type);
+          btn.classList.remove('is-active');
+        } else {
+          activeTypes.add(type);
+          btn.classList.add('is-active');
+        }
+        applyFilters();
+      };
+
+      window.resetTypeFilters = () => {
+        ['concept', 'formula', 'method', 'problem', 'pitfall'].forEach(t => activeTypes.add(t));
+        document.querySelectorAll('.filter-tag').forEach(el => el.classList.add('is-active'));
+        applyFilters();
+      };
+
+      let isolatedSection = null;
+      window.filterSection = (secName) => {
+        if (isolatedSection === secName) {
+          isolatedSection = null;
+          cy.elements().removeClass('faded');
+        } else {
+          isolatedSection = secName;
+          cy.elements().addClass('faded');
+          const secNodes = cy.nodes().filter(n => n.data('section') === secName);
+          secNodes.removeClass('faded');
+          secNodes.connectedEdges().removeClass('faded');
+        }
+      };
+
+      function applyFilters() {
+        cy.batch(() => {
+          cy.nodes().forEach(n => {
+            const t = n.data('type') || 'concept';
+            const isAnchor = n.data('anchor');
+            const isNew = n.data('origin') === 'new';
+
+            let visible = isAnchor || activeTypes.has(t);
+            if (newOnly && !isNew && !isAnchor) {
+              visible = false;
+            }
+            n.style('display', visible ? 'element' : 'none');
+          });
+
+          cy.edges().forEach(e => {
+            const rel = e.data('relation');
+            const isBackbone = ['前提', '用于', '转化', '等价于'].includes(rel);
+            let visible = true;
+            if (backboneOnly && !isBackbone) {
+              visible = false;
+            }
+            e.style('display', visible ? 'element' : 'none');
+          });
+        });
+      }
+
+      // 实时检索
+      const searchInput = document.getElementById('kg-search');
+      searchInput.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        if (!q) {
+          cy.elements().removeClass('faded selected');
+          return;
+        }
+        cy.elements().addClass('faded');
+        const matches = cy.nodes().filter(n => {
+          const name = String(n.data('name') || n.data('label') || '').toLowerCase();
+          const def = (n.data('definition') || '').toLowerCase();
+          const sec = (n.data('section') || '').toLowerCase();
+          const type = (n.data('type') || '').toLowerCase();
+          return name.includes(q) || def.includes(q) || sec.includes(q) || type.includes(q);
+        });
+        matches.removeClass('faded');
+        matches.connectedEdges().removeClass('faded');
+      });
+
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const q = e.target.value.trim().toLowerCase();
+          const matches = cy.nodes().filter(n => {
+            const name = String(n.data('name') || n.data('label') || '').toLowerCase();
+            return name.includes(q);
+          });
+          if (matches.length) {
+            focusNode(matches[0].data('name') || matches[0].data('label'));
+          }
+        }
+      });
+
+      cy.ready(() => cy.fit(undefined, 48));
+
+      // ── 点击节点交互 ──────────────────────────────────
+      cy.on('tap', 'node', event => {
+        const node = event.target;
+        cy.elements().addClass('faded');
+        node.removeClass('faded').addClass('selected');
+        node.neighborhood().removeClass('faded');
+
+        const outgoing = node.outgoers('edge');
+        const incoming = node.incomers('edge');
+        const degree = node.data('degree') || (outgoing.length + incoming.length);
+        const ntype = node.data('type') || 'concept';
+
+        const typeConfig = {
+          'concept': { label: '概念', cls: 'badge-concept' },
+          'formula': { label: '公式', cls: 'badge-formula' },
+          'method': { label: '解法', cls: 'badge-method' },
+          'problem': { label: '题型', cls: 'badge-problem' },
+          'pitfall': { label: '警示', cls: 'badge-pitfall' }
+        };
+        const typeBadge = `<span class="badge ${typeConfig[ntype]?.cls || 'badge-concept'}">${typeConfig[ntype]?.label || '概念'}</span>`;
+        const origin = node.data('origin');
+        const originBadge = origin === 'new'
+          ? '<span class="badge badge-new">新增</span>'
+          : origin === 'history'
+            ? '<span class="badge badge-muted">历史</span>'
+            : '';
+
+        const nodeName = esc(node.data('name') || node.data('label'));
+
+        // 1. 结构关联 (Prerequisites, Applications, Pitfalls, Distinctions)
+        const prereqEdges = incoming.filter(e => ['前提', '前置', '包含'].includes(e.data('relation')));
+        const prereqHtml = prereqEdges.length
+          ? prereqEdges.map(e => {
+              const src = esc(e.source().data('name') || e.source().data('label'));
+              return `<span class="interactive-chip chip-prereq" onclick="focusNode('${src}', event)">${src}</span>`;
+            }).join('')
+          : '';
+
+        const appEdges = outgoing.filter(e => ['用于', '转化'].includes(e.data('relation')));
+        const appHtml = appEdges.length
+          ? appEdges.map(e => {
+              const tgt = esc(e.target().data('name') || e.target().data('label'));
+              return `<span class="interactive-chip chip-app" onclick="focusNode('${tgt}', event)">${tgt}</span>`;
+            }).join('')
+          : '';
+
+        const pitfallEdges = node.connectedEdges().filter(e => {
+          if (e.data('relation') === '导致') return true;
+          const other = e.source().id() === node.id() ? e.target() : e.source();
+          return other.data('type') === 'pitfall';
+        });
+        const pitfallHtml = pitfallEdges.length
+          ? pitfallEdges.map(e => {
+              const other = e.source().id() === node.id() ? e.target() : e.source();
+              const otherName = esc(other.data('name') || other.data('label'));
+              return `<span class="interactive-chip chip-warn" onclick="focusNode('${otherName}', event)">${otherName}</span>`;
+            }).join('')
+          : '';
+
+        const diffEdges = node.connectedEdges().filter(e => e.data('relation') === '区别于');
+        const diffHtml = diffEdges.length
+          ? diffEdges.map(e => {
+              const other = e.source().id() === node.id() ? e.target() : e.source();
+              const otherName = esc(other.data('name') || other.data('label'));
+              return `<span class="interactive-chip chip-diff" onclick="focusNode('${otherName}', event)">${otherName}</span>`;
+            }).join('')
+          : '';
+
+        const hasStructural = prereqHtml || appHtml || pitfallHtml || diffHtml;
+
+        // 2. 出入边列表与佐证
+        const edgeItemHtml = (edge, isOut) => {
+          const other = isOut ? edge.target() : edge.source();
+          const otherName = esc(other.data('name') || other.data('label'));
+          const relName = esc(edge.data('relation') || '相关');
+          const color = relationColors[relName] || '#64748b';
+          const ev = edge.data('evidence');
+          return `
+            <div class="edge-item">
+              <div class="edge-flow">
+                ${isOut 
+                  ? `<span>本概念</span> <span class="edge-arrow">─</span> <span class="badge" style="background:${color}15;color:${color};border-color:${color}40">${relName}</span> <span class="edge-arrow">─▸</span> <span class="interactive-chip" onclick="focusNode('${otherName}', event)">${otherName}</span>`
+                  : `<span class="interactive-chip" onclick="focusNode('${otherName}', event)">${otherName}</span> <span class="edge-arrow">─</span> <span class="badge" style="background:${color}15;color:${color};border-color:${color}40">${relName}</span> <span class="edge-arrow">─▸</span> <span>本概念</span>`
+                }
+              </div>
+              ${ev ? `<div class="edge-ev">“${esc(ev)}”</div>` : ''}
+            </div>
+          `;
+        };
+
+        const allEdgesList = [
+          ...outgoing.map(e => edgeItemHtml(e, true)),
+          ...incoming.map(e => edgeItemHtml(e, false))
+        ].join('');
+
+        // 3. 同章其他知识点
+        const currentSection = node.data('section');
+        const cohortNodes = cy.nodes().filter(n => n.id() !== node.id() && n.data('section') === currentSection);
+        const cohortHtml = cohortNodes.length
+          ? cohortNodes.slice(0, 8).map(n => {
+              const cName = esc(n.data('name') || n.data('label'));
+              return `<span class="interactive-chip" onclick="focusNode('${cName}', event)">${cName}</span>`;
+            }).join('')
+          : '';
+
+        // 渲染完整节点详情
+        detail.innerHTML = `
+          <div class="detail-card">
+            <div class="node-header">
+              <div class="node-title">${nodeName}</div>
+              <div class="node-badges">
+                ${typeBadge}
+                <span class="badge badge-section">§ ${esc(node.data('section') || '未分组')}</span>
+                <span class="badge badge-muted">${degree} 条关联</span>
+                ${originBadge}
+              </div>
+            </div>
+
+            <div class="detail-block">
+              <div class="block-label">定义与阐述</div>
+              <div class="def-box">${esc(node.data('definition') || '原文未给出独立定义句')}</div>
+            </div>
+
+            ${hasStructural ? `
+            <div class="detail-block">
+              <div class="block-label">结构关联</div>
+              <div class="relation-grid">
+                ${prereqHtml ? `
+                <div class="relation-row">
+                  <span class="relation-kind">前置前提</span>
+                  <div class="relation-chips">${prereqHtml}</div>
+                </div>` : ''}
+                ${appHtml ? `
+                <div class="relation-row">
+                  <span class="relation-kind">后续应用</span>
+                  <div class="relation-chips">${appHtml}</div>
+                </div>` : ''}
+                ${pitfallHtml ? `
+                <div class="relation-row">
+                  <span class="relation-kind relation-kind-warn">易错警示</span>
+                  <div class="relation-chips">${pitfallHtml}</div>
+                </div>` : ''}
+                ${diffHtml ? `
+                <div class="relation-row">
+                  <span class="relation-kind relation-kind-diff">对照辨析</span>
+                  <div class="relation-chips">${diffHtml}</div>
+                </div>` : ''}
+              </div>
+            </div>` : ''}
+
+            ${allEdgesList ? `
+            <div class="detail-block">
+              <div class="block-label">关系明细与原文佐证</div>
+              <div class="edge-list">${allEdgesList}</div>
+            </div>` : ''}
+
+            ${cohortHtml ? `
+            <div class="detail-block">
+              <div class="block-label">同章其他知识点</div>
+              <div class="relation-chips">${cohortHtml}</div>
+            </div>` : ''}
+          </div>
+        `;
+      });
+
+      // ── 点击边交互 ────────────────────────────────────
+      cy.on('tap', 'edge', event => {
+        const edge = event.target;
+        cy.elements().addClass('faded');
+        edge.removeClass('faded').addClass('selected');
+        edge.connectedNodes().removeClass('faded').addClass('selected');
+
+        const srcName = esc(edge.source().data('name') || edge.source().data('label'));
+        const tgtName = esc(edge.target().data('name') || edge.target().data('label'));
+        const relName = esc(edge.data('label') || '相关');
+        const relColor = relationColors[relName] || '#0047ab';
+        const evidence = esc(edge.data('evidence') || '');
+
+        detail.innerHTML = `
+          <div class="edge-card">
+            <div class="edge-triplet-flow">
+              <span class="interactive-chip" onclick="focusNode('${srcName}', event)">${srcName}</span>
+              <span class="edge-arrow-label" style="background:${relColor}15;color:${relColor};border-color:${relColor}40">
+                ── ${relName} ──▸
+              </span>
+              <span class="interactive-chip" onclick="focusNode('${tgtName}', event)">${tgtName}</span>
+            </div>
+
+            <div class="detail-block" style="margin-top: 12px;">
+              <div class="block-label">原文证据支撑</div>
+              <div class="edge-evidence-box">
+                ${evidence ? `“${evidence}”` : '<span style="color:#8c857b;font-style:normal">（由正文上下文逻辑直接关联，未提取独立引句）</span>'}
+              </div>
+            </div>
+
+            <div class="edge-actions">
+              <button class="nav-chip" onclick="focusNode('${srcName}', event)">定位起点：${srcName}</button>
+              <button class="nav-chip" onclick="focusNode('${tgtName}', event)">定位终点：${tgtName}</button>
+            </div>
+          </div>
+        `;
+      });
+
+      cy.on('tap', event => {
+        if (event.target === cy) {
+          cy.elements().removeClass('faded selected');
+          detail.innerHTML = renderEmptyState();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
